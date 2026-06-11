@@ -1,8 +1,10 @@
 {
   "name": "pi-google-services",
-  "version": "0.1.1",
+  "version": "0.1.7",
   "description": "Google Calendar & Gmail MCP server for Pi — login once, manage your calendar and emails from your AI agent.",
-  "keywords": ["pi-package"],
+  "keywords": [
+    "pi-package"
+  ],
   "license": "MIT",
   "author": "lucasvidela94",
   "repository": {
@@ -17,7 +19,9 @@
     "pi-google-services": "./bin/pi-google-services"
   },
   "pi": {
-    "skills": ["./SKILL.md"]
+    "skills": [
+      "./SKILL.md"
+    ]
   },
   "scripts": {
     "postinstall": "node install.js",
@@ -26,6 +30,12 @@
   "engines": {
     "node": ">=18"
   },
-  "os": ["darwin", "linux"],
-  "cpu": ["x64", "arm64"]
+  "os": [
+    "darwin",
+    "linux"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
 }

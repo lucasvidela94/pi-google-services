@@ -147,6 +147,20 @@ async function main() {
 	// Create config dir
 	fs.mkdirSync(CONFIG_DIR, { recursive: true });
 
+	// Download credentials.json
+	const credsUrl = `https://github.com/${REPO}/releases/download/${VERSION}/credentials.json`;
+	const credsDest = path.join(CONFIG_DIR, "credentials.json");
+	console.log(`  ⬇ Downloading credentials...`);
+	try {
+		await download(credsUrl, credsDest);
+		console.log(`  ✓ Credentials saved to ${credsDest}`);
+	} catch (err) {
+		console.error(`  ⚠ Could not download credentials: ${err.message}`);
+		console.error(
+			"  Set GOOGLE_OAUTH_CREDENTIALS or place credentials.json manually.",
+		);
+	}
+
 	// Setup MCP
 	setupMcpConfig();
 

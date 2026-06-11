@@ -33,6 +33,8 @@ func main() {
 		cmdLogin()
 	case "logout":
 		cmdLogout()
+	case "setup":
+		cmdSetup()
 	case "serve":
 		cmdServe()
 	case "status":
@@ -50,21 +52,15 @@ func printUsage() {
 	fmt.Printf(`pi-google-services v%s — Google services MCP server for Pi
 
 Usage:
-  pi-google-services login          Authenticate with Google (browser)
+  pi-google-services setup          First-time setup (login + configure)
+  pi-google-services login          Authenticate with Google
   pi-google-services logout         Remove stored credentials
   pi-google-services serve          Start MCP server (stdio)
   pi-google-services status         Show auth status
   pi-google-services help           Show this help
 
 Install:  pi install npm:pi-google-services
-Login:    pi-google-services login
-
-Add to Pi MCP config (~/.pi/agent/mcp.json):
-  { "mcpServers": {
-      "google-services": {
-        "command": "pi-google-services",
-        "args": ["serve"] }
-    } }
+Setup:    pi-google-services setup
 `, version)
 }
 
@@ -237,6 +233,57 @@ func cmdServe() {
 	if err := server.Run(ctx); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
+}
+
+func cmdSetup() {
+	// Login flow
+	credsData, err := getCredentialsJSON()
+	if err != nil {
+		fmt.Println("❌ credentials.json no encontrado.")
+		fmt.Println("   Asegurate de haber instalado el package con: pi install npm:pi-google-services")
+		os.Exit(1)
+	}
+
+	creds, err := config.LoadCredentialsFromBytes(credsData)
+	if err != nil {
+		log.Fatalf("Credenciales inválidas: %v", err)
+	}
+
+	// Check if already authenticated
+	token, err := auth.LoadToken()
+	if err == nil && token != nil {
+		fmt.Println("✅ Ya autenticado.")
+		fmt.Println()
+		fmt.Println("  Para conectar a Pi:")
+		fmt.Println("    1. Reiniciá la sesión de Pi")
+		fmt.Println("    2. Pedí: 'mostrame mis emails' o 'listá mis eventos'")
+		return
+	}
+
+	a := auth.NewFromCredentials(creds)
+	ctx := context.Background()
+
+	fmt.Println("\n🔐 Abriendo navegador para autorizar con Google...")
+	token, err = a.Login(ctx)
+	if err != nil {
+		log.Fatalf("Login falló: %v", err)
+	}
+
+	cfg := &config.Config{
+		ClientID:     a.OAuthConfig.ClientID,
+		ClientSecret: a.OAuthConfig.ClientSecret,
+		Scopes:       a.OAuthConfig.Scopes,
+	}
+	if err := cfg.Save(); err != nil {
+		log.Printf("Warning: %v", err)
+	}
+
+	fmt.Printf("\n✅ Setup completo!\n")
+	fmt.Printf("  Token: %s…\n", token.AccessToken[:min(10, len(token.AccessToken))])
+	fmt.Println()
+	fmt.Println("  Para empezar a usar:")
+	fmt.Println("    1. Reiniciá la sesión de Pi")
+	fmt.Println("    2. Pedí: 'mostrame mis emails' o 'creá un meet mañana a las 10'")
 }
 
 func registerServiceTools(server *mcp.Server, svc services.Service) {

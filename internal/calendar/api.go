@@ -84,12 +84,24 @@ func (s *Service) ListEvents(ctx context.Context, calendarID string, timeMin, ti
 	return result, nil
 }
 
-// CreateEvent creates a new event. Accepts a raw gcal.Event for full control.
-func (s *Service) CreateEvent(ctx context.Context, calendarID string, event *gcal.Event) (*gcal.Event, error) {
+// CreateEvent creates a new event. If withMeet is true, attaches a Google Meet link.
+func (s *Service) CreateEvent(ctx context.Context, calendarID string, event *gcal.Event, withMeet bool) (*gcal.Event, error) {
 	if calendarID == "" {
 		calendarID = "primary"
 	}
-	created, err := s.svc.Events.Insert(calendarID, event).Do()
+	call := s.svc.Events.Insert(calendarID, event)
+	if withMeet {
+		call.ConferenceDataVersion(1)
+		event.ConferenceData = &gcal.ConferenceData{
+			CreateRequest: &gcal.CreateConferenceRequest{
+				RequestId: fmt.Sprintf("pi-google-%d", time.Now().UnixNano()),
+				ConferenceSolutionKey: &gcal.ConferenceSolutionKey{
+					Type: "hangoutsMeet",
+				},
+			},
+		}
+	}
+	created, err := call.Do()
 	if err != nil {
 		return nil, fmt.Errorf("create event: %w", err)
 	}

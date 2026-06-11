@@ -165,14 +165,16 @@ async function main() {
 	setupMcpConfig();
 
 	// Done
-	console.log("\n  ─────────────────────────────────────");
+	console.log("");
+	console.log("  ─────────────────────────────────────");
 	console.log("  ✅ pi-google-services installed!");
 	console.log("");
-	console.log("  Next steps:");
-	console.log("    1. Run:  pi-google-services login");
-	console.log("       (opens browser → authorize with Google)");
-	console.log("    2. Restart Pi session");
-	console.log("    3. Ask Pi to manage your calendar & email");
+	console.log("  Next step:");
+	console.log("    pi-google-services setup");
+	console.log("    (opens browser → authorize → ready)");
+	console.log("");
+	console.log("  After that, restart Pi and ask:");
+	console.log('    "show my events" or "read my inbox"');
 	console.log("  ─────────────────────────────────────\n");
 }
 

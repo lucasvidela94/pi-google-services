@@ -26,18 +26,20 @@ Arguments:
 - `maxResults` — max events (default: 50)
 
 ### `create-event`
-Create a new calendar event.
+Create a new calendar event with optional attendees and Google Meet.
 
 Examples:
 - "creá una reunión mañana a las 15"
 - "agendá una llamada con juan@gmail.com el jueves a las 10"
 - "creá un evento 'Cumpleaños' el 25/12 todo el día"
+- "creá un meet virtual mañana a las 16 con Meet"
 
 Arguments:
 - `summary` (required) — event title
 - `startTime` (required) — ISO 8601 start
 - `endTime` (required) — ISO 8601 end
 - `attendees` — comma-separated emails to invite
+- `withMeet` (boolean) — add Google Meet link
 - `description` — event description
 - `location` — event location
 - `calendarId` — target calendar (default: primary)

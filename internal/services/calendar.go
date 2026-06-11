@@ -49,7 +49,7 @@ func (s *CalendarService) Tools() []mcp.ToolDefinition {
 		},
 		{
 			Name:        "create-event",
-			Description: "Create a new calendar event with optional attendees",
+			Description: "Create a new calendar event with optional attendees and Google Meet",
 			InputSchema: mcp.InputSchema{
 				Type: "object",
 				Properties: map[string]mcp.PropertySchema{
@@ -60,6 +60,7 @@ func (s *CalendarService) Tools() []mcp.ToolDefinition {
 					"endTime":     {Type: "string", Description: "End time (ISO 8601)"},
 					"location":    {Type: "string", Description: "Event location"},
 					"attendees":   {Type: "string", Description: "Comma-separated email addresses"},
+					"withMeet":    {Type: "boolean", Description: "Add Google Meet link (default: false)"},
 				},
 				Required: []string{"summary", "startTime", "endTime"},
 			},
@@ -188,6 +189,7 @@ func (s *CalendarService) handleCreateEvent(ctx context.Context, params json.Raw
 		EndTime     string `json:"endTime"`
 		Location    string `json:"location"`
 		Attendees   string `json:"attendees"`
+		WithMeet    bool   `json:"withMeet"`
 	}
 	if err := json.Unmarshal(params, &args); err != nil {
 		return nil, &mcp.RPCError{Code: -32602, Message: "Invalid arguments", Data: err.Error()}
@@ -212,16 +214,25 @@ func (s *CalendarService) handleCreateEvent(ctx context.Context, params json.Raw
 		}
 	}
 
-	created, err := s.api.CreateEvent(ctx, args.CalendarID, event)
+	created, err := s.api.CreateEvent(ctx, args.CalendarID, event, args.WithMeet)
 	if err != nil {
 		return nil, &mcp.RPCError{Code: -32603, Message: "Failed to create event", Data: err.Error()}
 	}
 
+	meetInfo := ""
+	if args.WithMeet && created.ConferenceData != nil && created.ConferenceData.EntryPoints != nil {
+		for _, ep := range created.ConferenceData.EntryPoints {
+			if ep.EntryPointType == "video" {
+				meetInfo = fmt.Sprintf("\n🎥 Meet: %s", ep.Uri)
+				break
+			}
+		}
+	}
 	attendeesInfo := ""
 	if args.Attendees != "" {
 		attendeesInfo = fmt.Sprintf("\nAttendees: %s", args.Attendees)
 	}
-	return contentResponse(fmt.Sprintf("✅ Event created: %s\nID: %s\nLink: %s%s", created.Summary, created.Id, created.HtmlLink, attendeesInfo)), nil
+	return contentResponse(fmt.Sprintf("✅ Event created: %s\nID: %s\nLink: %s%s%s", created.Summary, created.Id, created.HtmlLink, meetInfo, attendeesInfo)), nil
 }
 
 func (s *CalendarService) handleUpdateEvent(ctx context.Context, params json.RawMessage) (interface{}, *mcp.RPCError) {

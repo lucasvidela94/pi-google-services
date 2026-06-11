@@ -1,0 +1,11 @@
+# Binary (built locally, not in repo)
+pi-google-services
+pi-google-services-*
+
+# OAuth credentials (downloaded by install.js or kept locally)
+# Stored as GitHub secret GOOGLE_OAUTH_CREDENTIALS_JSON in CI
+credentials.json
+
+# OS files
+.DS_Store
+Thumbs.db

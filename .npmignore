@@ -1,0 +1,19 @@
+# Source
+main.go
+internal/
+go.mod
+go.sum
+install.sh
+*.go
+*.test
+
+# Development
+.git/
+.github/
+.gitignore
+credentials.json
+pi-google-services
+
+# IDE
+.vscode/
+.idea/

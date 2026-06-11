@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -19,9 +18,6 @@ import (
 )
 
 const version = "0.1.0"
-
-//go:embed credentials.json
-var embeddedCreds []byte
 
 func main() {
 	log.SetFlags(0)
@@ -60,7 +56,8 @@ Usage:
   pi-google-services status         Show auth status
   pi-google-services help           Show this help
 
-The OAuth client ID is embedded. Run 'login' once, then 'serve'.
+Install:  pi install npm:pi-google-services
+Login:    pi-google-services login
 
 Add to Pi MCP config (~/.pi/agent/mcp.json):
   { "mcpServers": {
@@ -71,23 +68,25 @@ Add to Pi MCP config (~/.pi/agent/mcp.json):
 `, version)
 }
 
-// getCredentialsJSON returns embedded or file-based credentials.
+// getCredentialsJSON reads credentials from file or env var.
+// Credentials are NOT embedded in the binary for security.
+// install.js downloads both binary + credentials.json.
 func getCredentialsJSON() ([]byte, error) {
-	if len(embeddedCreds) > 0 {
-		return embeddedCreds, nil
-	}
+	// 1. GOOGLE_OAUTH_CREDENTIALS env var
 	if path := os.Getenv("GOOGLE_OAUTH_CREDENTIALS"); path != "" {
 		return os.ReadFile(path)
 	}
+	// 2. Config directory (installed by install.js)
 	if dir, err := config.Dir(); err == nil {
 		if data, err := os.ReadFile(filepath.Join(dir, "credentials.json")); err == nil {
 			return data, nil
 		}
 	}
+	// 3. Current directory (development)
 	if data, err := os.ReadFile("credentials.json"); err == nil {
 		return data, nil
 	}
-	return nil, fmt.Errorf("no credentials found (embedded, env, or file)")
+	return nil, fmt.Errorf("credentials.json not found. Run install.js or set GOOGLE_OAUTH_CREDENTIALS")
 }
 
 // registeredServices returns all available services with their scopes.

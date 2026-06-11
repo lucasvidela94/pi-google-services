@@ -108,6 +108,8 @@ jobs:
       - name: Publish to npm (OIDC)
         run: |
           cd publish
+          # Clear NODE_AUTH_TOKEN from setup-node so npm uses OIDC
+          unset NODE_AUTH_TOKEN
           npm publish --access public
 
   create-release:

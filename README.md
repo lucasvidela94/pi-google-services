@@ -7,7 +7,7 @@ Single binary, zero runtime deps. Login once, manage everything from your agent.
 
 ```bash
 pi install npm:pi-google-services
-pi-google-services login
+pi-google-services setup
 # Restart Pi session, then:
 # "show my events", "read my inbox", "create a meeting with Meet"
 ```

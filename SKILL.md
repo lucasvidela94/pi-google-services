@@ -156,3 +156,58 @@ Arguments:
 - `to` (required) — recipient email
 - `subject` (required) — reply subject
 - `body` — reply body text
+
+## Tasks tools
+
+### `list-tasklists`
+Show all task lists.
+
+Examples:
+- "mostrame mis listas de tareas"
+
+### `list-tasks`
+List tasks (pending, completed, or all).
+
+Examples:
+- "mostrame mis tareas pendientes"
+- "qué tareas tengo para hacer?"
+- "mostrame las tareas completadas"
+
+Arguments:
+- `taskListId` — task list ID (default: @default)
+- `status` — filter: pending, completed, or '' for all
+- `maxResults` — max results (default: 50)
+
+### `create-task`
+Create a new task.
+
+Examples:
+- "creá una tarea para comprar leche"
+- "agendá 'llamar al dentista' para mañana"
+
+Arguments:
+- `title` (required) — task title
+- `taskListId` — target list (default: @default)
+- `notes` — optional description
+- `dueDate` — due date (YYYY-MM-DD)
+
+### `complete-task`
+Mark a task as done.
+
+Examples:
+- "marcá como hecha la tarea de la leche"
+- "completá la tarea del dentista"
+
+Arguments:
+- `taskId` (required) — task to complete
+- `taskListId` — target list (default: @default)
+
+### `delete-task`
+Delete a task.
+
+Examples:
+- "borrá la tarea de prueba"
+
+Arguments:
+- `taskId` (required) — task to delete
+- `taskListId` — target list (default: @default)

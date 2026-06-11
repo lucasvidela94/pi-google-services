@@ -36,6 +36,16 @@ pi-google-services setup
 | `send-email` | Send new email |
 | `reply-to-email` | Reply to thread |
 
+### Tasks (5)
+
+| Tool | Description |
+|------|-------------|
+| `list-tasklists` | Show all task lists |
+| `list-tasks` | List tasks (pending/completed) |
+| `create-task` | Create a new task |
+| `complete-task` | Mark task as done |
+| `delete-task` | Remove a task |
+
 ### Meet
 
 Pass `"withMeet": true` to `create-event` to auto-generate a Google Meet link.
@@ -79,7 +89,7 @@ go build -o pi-google-services .
 go test ./... -v
 ```
 
-15 unit tests (MCP protocol, config, service metadata).
+15 unit tests (MCP protocol, config, service metadata, services).
 
 ## License
 

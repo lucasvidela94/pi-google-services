@@ -15,6 +15,7 @@ import (
 	"github.com/sombi/pi-google-services/internal/gmail"
 	"github.com/sombi/pi-google-services/internal/mcp"
 	"github.com/sombi/pi-google-services/internal/services"
+	"github.com/sombi/pi-google-services/internal/tasks"
 )
 
 const version = "0.1.0"
@@ -88,8 +89,9 @@ func getCredentialsJSON() ([]byte, error) {
 // registeredServices returns all available services with their scopes.
 func registeredServices() []services.Service {
 	return []services.Service{
-		services.NewCalendar(nil), // placeholder; api set during serve
+		services.NewCalendar(nil), // placeholders; api set during serve
 		services.NewGmail(nil),
+		services.NewTasks(nil),
 	}
 }
 
@@ -222,10 +224,16 @@ func cmdServe() {
 		log.Fatalf("Gmail: %v", err)
 	}
 
+	tasksSvc, err := tasks.New(ctx, ts)
+	if err != nil {
+		log.Fatalf("Tasks: %v", err)
+	}
+
 	// Build MCP server with registered services
 	server := mcp.New()
 	registerServiceTools(server, services.NewCalendar(calSvc))
 	registerServiceTools(server, services.NewGmail(gmailSvc))
+	registerServiceTools(server, services.NewTasks(tasksSvc))
 
 	log.Println("✅ Google Services MCP server iniciado (stdio)")
 	log.Printf("   Tools registradas: %d\n", len(server.Tools()))

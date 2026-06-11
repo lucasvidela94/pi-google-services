@@ -21,6 +21,9 @@
   "pi": {
     "skills": [
       "./SKILL.md"
+    ],
+    "extensions": [
+      "./extensions"
     ]
   },
   "scripts": {

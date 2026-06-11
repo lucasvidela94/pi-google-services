@@ -1,24 +1,32 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/sombi/pi-google-services/internal/auth"
 	"github.com/sombi/pi-google-services/internal/calendar"
 	"github.com/sombi/pi-google-services/internal/config"
+	"github.com/sombi/pi-google-services/internal/contacts"
+	"github.com/sombi/pi-google-services/internal/drive"
 	"github.com/sombi/pi-google-services/internal/gmail"
 	"github.com/sombi/pi-google-services/internal/mcp"
 	"github.com/sombi/pi-google-services/internal/services"
 	"github.com/sombi/pi-google-services/internal/tasks"
 )
 
-const version = "0.1.0"
+const version = "0.1.10"
 
 func main() {
 	log.SetFlags(0)
@@ -36,6 +44,8 @@ func main() {
 		cmdLogout()
 	case "setup":
 		cmdSetup()
+	case "update":
+		cmdUpdate()
 	case "serve":
 		cmdServe()
 	case "status":
@@ -56,12 +66,14 @@ Usage:
   pi-google-services setup          First-time setup (login + configure)
   pi-google-services login          Authenticate with Google
   pi-google-services logout         Remove stored credentials
+  pi-google-services update         Self-update binary to latest version
   pi-google-services serve          Start MCP server (stdio)
   pi-google-services status         Show auth status
   pi-google-services help           Show this help
 
 Install:  pi install npm:pi-google-services
 Setup:    pi-google-services setup
+Update:   pi-google-services update
 `, version)
 }
 
@@ -92,6 +104,8 @@ func registeredServices() []services.Service {
 		services.NewCalendar(nil), // placeholders; api set during serve
 		services.NewGmail(nil),
 		services.NewTasks(nil),
+		services.NewDrive(nil),
+		services.NewContacts(nil),
 	}
 }
 
@@ -229,11 +243,23 @@ func cmdServe() {
 		log.Fatalf("Tasks: %v", err)
 	}
 
+	driveSvc, err := drive.New(ctx, ts)
+	if err != nil {
+		log.Fatalf("Drive: %v", err)
+	}
+
+	contactsSvc, err := contacts.New(ctx, ts)
+	if err != nil {
+		log.Fatalf("Contacts: %v", err)
+	}
+
 	// Build MCP server with registered services
 	server := mcp.New()
 	registerServiceTools(server, services.NewCalendar(calSvc))
 	registerServiceTools(server, services.NewGmail(gmailSvc))
 	registerServiceTools(server, services.NewTasks(tasksSvc))
+	registerServiceTools(server, services.NewDrive(driveSvc))
+	registerServiceTools(server, services.NewContacts(contactsSvc))
 
 	log.Println("✅ Google Services MCP server iniciado (stdio)")
 	log.Printf("   Tools registradas: %d\n", len(server.Tools()))
@@ -292,6 +318,148 @@ func cmdSetup() {
 	fmt.Println("  Para empezar a usar:")
 	fmt.Println("    1. Reiniciá la sesión de Pi")
 	fmt.Println("    2. Pedí: 'mostrame mis emails' o 'creá un meet mañana a las 10'")
+}
+
+func cmdUpdate() {
+	fmt.Println("\n🔍 Buscando actualizaciones...")
+
+	latest, err := fetchLatestVersion()
+	if err != nil {
+		log.Fatalf("Error al buscar versión: %v", err)
+	}
+
+	current := strings.TrimPrefix(version, "v")
+	latest = strings.TrimPrefix(latest, "v")
+
+	switch {
+	case latest == "" || latest == current:
+		fmt.Printf("✅ Ya tenés la última versión (%s)\n", version)
+		return
+	case compareVersions(latest, current) > 0:
+		fmt.Printf("📦 Versión nueva disponible: %s (actual: %s)\n", latest, version)
+		if err := downloadUpdate(latest); err != nil {
+			log.Fatalf("Error al actualizar: %v", err)
+		}
+		fmt.Printf("\n✅ Actualizado a v%s\n", latest)
+		fmt.Println("   Reiniciá la sesión de Pi para usar la nueva versión.")
+	default:
+		fmt.Printf("✅ Ya tenés la última versión (%s)\n", version)
+	}
+}
+
+func fetchLatestVersion() (string, error) {
+	// GitHub API: get latest release tag
+	resp, err := http.Get("https://api.github.com/repos/lucasvidela94/pi-google-services/releases/latest")
+	if err != nil {
+		return "", fmt.Errorf("github api: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("read response: %w", err)
+	}
+
+	var result struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", fmt.Errorf("parse: %w", err)
+	}
+	return result.TagName, nil
+}
+
+func downloadUpdate(version string) error {
+	plat := runtime.GOOS + "-" + runtime.GOARCH
+	switch plat {
+	case "linux-amd64", "linux-arm64", "darwin-arm64":
+		// supported
+	default:
+		return fmt.Errorf("plataforma no soportada: %s", plat)
+	}
+
+	url := fmt.Sprintf("https://github.com/lucasvidela94/pi-google-services/releases/download/v%s/pi-google-services-%s.gz", version, plat)
+	fmt.Printf("   ⬇ Descargando %s...\n", url)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Errorf("download: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+
+	// Read gzip data
+	gzipData, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("read: %w", err)
+	}
+
+	// Get current binary path
+	selfPath, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("self path: %w", err)
+	}
+
+	// Decompress and write
+	// We need compress/gzip
+	// Write to temp file first, then rename
+	tmpPath := selfPath + ".new"
+	if err := decompressGzip(gzipData, tmpPath, 0755); err != nil {
+		return fmt.Errorf("decompress: %w", err)
+	}
+
+	if err := os.Rename(tmpPath, selfPath); err != nil {
+		os.Remove(tmpPath)
+		return fmt.Errorf("replace: %w", err)
+	}
+
+	return nil
+}
+
+func decompressGzip(data []byte, path string, mode os.FileMode) error {
+	// Decompress gzip data and write to file
+	gr, err := gzip.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return fmt.Errorf("gzip reader: %w", err)
+	}
+	defer gr.Close()
+
+	out, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, mode)
+	if err != nil {
+		return fmt.Errorf("create temp: %w", err)
+	}
+	defer out.Close()
+
+	if _, err := io.Copy(out, gr); err != nil {
+		return fmt.Errorf("decompress: %w", err)
+	}
+	return nil
+}
+
+func compareVersions(a, b string) int {
+	aParts := strings.Split(a, ".")
+	bParts := strings.Split(b, ".")
+
+	maxLen := len(aParts)
+	if len(bParts) > maxLen {
+		maxLen = len(bParts)
+	}
+
+	for i := 0; i < maxLen; i++ {
+		var ai, bi int
+		fmt.Sscanf(aParts[i], "%d", &ai)
+		fmt.Sscanf(bParts[i], "%d", &bi)
+		if ai > bi {
+			return 1
+		}
+		if ai < bi {
+			return -1
+		}
+	}
+	return 0
 }
 
 func registerServiceTools(server *mcp.Server, svc services.Service) {

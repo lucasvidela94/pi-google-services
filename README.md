@@ -12,6 +12,18 @@ pi-google-services setup
 # "show my events", "read my inbox", "create a meeting with Meet"
 ```
 
+## Updates
+
+```bash
+# Via Pi (recommended)
+pi update pi-google-services
+
+# Via binary
+pi-google-services update
+```
+
+After updating, restart your Pi session.
+
 ## Tools
 
 ### Calendar (7)
@@ -73,6 +85,49 @@ pi-google-services/          npm package (pi-package)
 
 Credentials are stored as a GitHub secret (GOOGLE_OAUTH_CREDENTIALS_JSON),
 NOT in the repository. install.js downloads them during npm postinstall.
+
+## Transparency & Security
+
+### Open Source, Auditable Code
+
+This entire project is open source. Every line of code can be reviewed,
+audited, and verified. The Go binary is built from this source in
+GitHub Actions with provenance attestation — you can verify the build
+matches the published source.
+
+### How OAuth Works
+
+pi-google-services uses **OAuth 2.0 with PKCE** (Proof Key for Code
+Exchange), the industry standard for desktop applications:
+
+1. You run `login` or `setup`
+2. Your browser opens to Google's consent screen
+3. You see exactly what permissions are being requested (calendar,
+   email, tasks, drive, contacts)
+4. You authorize with your Google account
+5. A token is saved **locally** on your machine (`~/.config/pi-google-services/`)
+6. The token never leaves your machine — all API calls go directly
+   from your binary to Google
+
+### About the Client ID
+
+The package ships with a pre-registered Google Cloud OAuth client ID.
+This is **not a secret** — it's the same mechanism used by every app
+that offers "Sign in with Google" (Todoist, Notion, Fantastical, etc.).
+
+The client ID is publicly visible in the authorization URL and only
+serves to identify which app is requesting access. The actual security
+is in the OAuth consent screen where **you** decide what to share.
+
+### Credential Storage
+
+| What | Where |
+|------|-------|
+| OAuth client ID | Embedded in the binary (public by design) |
+| Access/Refresh tokens | `~/.config/pi-google-services/tokens.json` (0600 permissions) |
+| No data leaves your machine | All Google API calls are direct from your binary |
+
+The binary never phones home, tracks usage, or sends telemetry.
 
 ## Development
 

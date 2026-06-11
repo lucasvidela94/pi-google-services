@@ -114,51 +114,73 @@ async function main() {
 	// Ensure bin dir
 	fs.mkdirSync(binDir, { recursive: true });
 
-	// Download binary
-	console.log(`  ⬇ Downloading ${assetName}...`);
-	console.log(`  From: ${url}`);
-
-	try {
-		await download(url, dest);
-	} catch (err) {
-		console.error(`\n  ❌ Download failed: ${err.message}`);
-		console.error("\n  Possible reasons:");
-		console.error(`    • Release ${VERSION} not published yet`);
-		console.error("    • Network issue");
-		console.error("\n  Build from source instead:");
-		console.error(
-			"    git clone https://github.com/timolabs/pi-google-services.git",
-		);
-		console.error(
-			"    cd pi-google-services && go build -o pi-google-services .",
-		);
-		console.error("    cp pi-google-services ~/.local/bin/");
-		process.exit(1);
+	// Only download binary if it doesn't exist or version differs
+	let needsBinary = true;
+	if (fs.existsSync(BIN_PATH)) {
+		try {
+			const out = require("child_process").execSync(
+				`${BIN_PATH} --version 2>/dev/null || ${BIN_PATH} help 2>&1 || true`,
+				{ encoding: "utf-8" },
+			);
+			// Check if help output contains current version
+			if (out.includes("v" + VERSION) || out.includes(VERSION)) {
+				needsBinary = false;
+			}
+		} catch {
+			// Binary broken, re-download
+		}
 	}
 
-	// Decompress
-	const compressed = fs.readFileSync(dest);
-	const binary = zlib.gunzipSync(compressed);
-	fs.writeFileSync(BIN_PATH, binary, { mode: 0o755 });
-	fs.unlinkSync(dest);
-
-	console.log(`  ✓ Installed to ${BIN_PATH}`);
+	if (needsBinary) {
+		console.log(`  ⬇ Downloading ${assetName}...`);
+		try {
+			await download(url, dest);
+		} catch (err) {
+			console.error(`\n  ❌ Download failed: ${err.message}`);
+			if (fs.existsSync(BIN_PATH)) {
+				console.log("  Using existing binary.");
+			} else {
+				console.error("\n  Build from source instead:");
+				console.error(
+					"    git clone https://github.com/lucasvidela94/pi-google-services.git",
+				);
+				console.error(
+					"    cd pi-google-services && go build -o pi-google-services .",
+				);
+				console.error("    cp pi-google-services ~/.local/bin/");
+				process.exit(1);
+			}
+		}
+		if (fs.existsSync(dest)) {
+			const compressed = fs.readFileSync(dest);
+			const binary = zlib.gunzipSync(compressed);
+			fs.writeFileSync(BIN_PATH, binary, { mode: 0o755 });
+			fs.unlinkSync(dest);
+			console.log(`  ✓ Installed to ${BIN_PATH}`);
+		}
+	} else {
+		console.log(`  ✓ Binary already up-to-date (v${VERSION})`);
+	}
 
 	// Create config dir
 	fs.mkdirSync(CONFIG_DIR, { recursive: true });
 
-	// Download credentials.json
-	const credsUrl = `https://github.com/${REPO}/releases/download/${VERSION}/credentials.json`;
+	// Download credentials.json only if missing
 	const credsDest = path.join(CONFIG_DIR, "credentials.json");
-	console.log(`  ⬇ Downloading credentials...`);
-	try {
-		await download(credsUrl, credsDest);
-		console.log(`  ✓ Credentials saved to ${credsDest}`);
-	} catch (err) {
-		console.error(`  ⚠ Could not download credentials: ${err.message}`);
-		console.error(
-			"  Set GOOGLE_OAUTH_CREDENTIALS or place credentials.json manually.",
-		);
+	if (!fs.existsSync(credsDest)) {
+		const credsUrl = `https://github.com/${REPO}/releases/download/${VERSION}/credentials.json`;
+		console.log(`  ⬇ Downloading credentials...`);
+		try {
+			await download(credsUrl, credsDest);
+			console.log(`  ✓ Credentials saved to ${credsDest}`);
+		} catch (err) {
+			console.error(`  ⚠ Could not download credentials: ${err.message}`);
+			console.error(
+				"  Set GOOGLE_OAUTH_CREDENTIALS or place credentials.json manually.",
+			);
+		}
+	} else {
+		console.log("  ✓ Credentials already present");
 	}
 
 	// Setup MCP

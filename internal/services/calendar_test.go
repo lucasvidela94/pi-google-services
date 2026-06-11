@@ -127,16 +127,6 @@ func TestGmailServiceHandle_UnknownTool(t *testing.T) {
 	}
 }
 
-// Test that the service tools count is correct.
-func TestServiceToolsCount(t *testing.T) {
-	if len((&CalendarService{}).Tools()) != 7 {
-		t.Errorf("Calendar: expected 7 tools")
-	}
-	if len((&GmailService{}).Tools()) != 5 {
-		t.Errorf("Gmail: expected 5 tools")
-	}
-}
-
 // TestListEventsHandlers validates parameter parsing.
 func TestListEventsArgs(t *testing.T) {
 	// Test that the time parsing doesn't panic on empty
@@ -161,5 +151,110 @@ func TestListEventsArgs(t *testing.T) {
 	}
 	if tm.Year() != 2026 || tm.Month() != 6 || tm.Day() != 16 {
 		t.Errorf("unexpected date: %v", tm)
+	}
+}
+
+// --- Drive service tests ---
+
+func TestDriveServiceName(t *testing.T) {
+	ds := &DriveService{}
+	if ds.Name() != "drive" {
+		t.Errorf("Name() = %q, want %q", ds.Name(), "drive")
+	}
+}
+
+func TestDriveServiceScopes(t *testing.T) {
+	ds := &DriveService{}
+	scopes := ds.Scopes()
+	if len(scopes) < 1 {
+		t.Errorf("expected at least 1 scope, got %d", len(scopes))
+	}
+}
+
+func TestDriveServiceTools(t *testing.T) {
+	ds := &DriveService{}
+	tools := ds.Tools()
+	if len(tools) != 6 {
+		t.Errorf("expected 6 tools, got %d", len(tools))
+	}
+	names := make(map[string]bool)
+	for _, tool := range tools {
+		names[tool.Name] = true
+	}
+	for _, name := range []string{
+		"list-files", "search-drive", "upload-file",
+		"download-file", "create-folder", "delete-file",
+	} {
+		if !names[name] {
+			t.Errorf("missing tool: %s", name)
+		}
+	}
+}
+
+func TestDriveServiceHandle_UnknownTool(t *testing.T) {
+	ds := &DriveService{}
+	_, err := ds.Handle(nil, "nonexistent", nil)
+	if err == nil || err.Code != -32601 {
+		t.Errorf("expected -32601 error, got %+v", err)
+	}
+}
+
+func TestServiceToolsCount(t *testing.T) {
+	calLen := len((&CalendarService{}).Tools())
+	gmailLen := len((&GmailService{}).Tools())
+	tasksLen := len((&TasksService{}).Tools())
+	driveLen := len((&DriveService{}).Tools())
+	contactsLen := len((&ContactsService{}).Tools())
+
+	if calLen != 7 {
+		t.Errorf("Calendar: expected 7, got %d", calLen)
+	}
+	if gmailLen != 5 {
+		t.Errorf("Gmail: expected 5, got %d", gmailLen)
+	}
+	if tasksLen != 5 {
+		t.Errorf("Tasks: expected 5, got %d", tasksLen)
+	}
+	if driveLen != 6 {
+		t.Errorf("Drive: expected 6, got %d", driveLen)
+	}
+	if contactsLen != 3 {
+		t.Errorf("Contacts: expected 3, got %d", contactsLen)
+	}
+	total := calLen + gmailLen + tasksLen + driveLen + contactsLen
+	if total != 26 {
+		t.Errorf("Total tools: expected 26 (7+5+5+6+3), got %d", total)
+	}
+}
+
+func TestContactsServiceName(t *testing.T) {
+	ds := &ContactsService{}
+	if ds.Name() != "contacts" {
+		t.Errorf("Name() = %q, want %q", ds.Name(), "contacts")
+	}
+}
+
+func TestContactsServiceScopes(t *testing.T) {
+	ds := &ContactsService{}
+	scopes := ds.Scopes()
+	if len(scopes) < 1 {
+		t.Errorf("expected at least 1 scope, got %d", len(scopes))
+	}
+}
+
+func TestContactsServiceTools(t *testing.T) {
+	ds := &ContactsService{}
+	tools := ds.Tools()
+	if len(tools) != 3 {
+		t.Errorf("expected 3 tools, got %d", len(tools))
+	}
+	names := make(map[string]bool)
+	for _, tool := range tools {
+		names[tool.Name] = true
+	}
+	for _, name := range []string{"search-contacts", "get-contact", "create-contact"} {
+		if !names[name] {
+			t.Errorf("missing tool: %s", name)
+		}
 	}
 }

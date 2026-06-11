@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>pi-google-services</title>
+    <style>
+      :root {
+        --bg: #0d0d0d;
+        --surface: #1a1a1a;
+        --border: #2a2a2a;
+        --text: #e0e0e0;
+        --muted: #888;
+        --accent: #7c6ff0;
+        --accent-glow: rgba(124, 111, 240, 0.15);
+        --font: ui-monospace, "SF Mono", "Cascadia Code", monospace;
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      .container {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 4rem 2rem;
+      }
+
+      /* header */
+      header {
+        margin-bottom: 4rem;
+      }
+      header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        background: linear-gradient(135deg, #fff 0%, #7c6ff0 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      header p {
+        margin-top: 0.75rem;
+        font-size: 1.1rem;
+        color: var(--muted);
+        max-width: 520px;
+      }
+      .badge {
+        display: inline-block;
+        margin-top: 1rem;
+        padding: 0.35rem 0.9rem;
+        border-radius: 100px;
+        background: var(--accent-glow);
+        color: var(--accent);
+        font-size: 0.8rem;
+        font-weight: 600;
+        border: 1px solid rgba(124, 111, 240, 0.25);
+      }
+
+      /* sections */
+      section {
+        margin-bottom: 3.5rem;
+      }
+      h2 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--muted);
+        margin-bottom: 1rem;
+      }
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.25rem 1.5rem;
+        margin-bottom: 0.75rem;
+      }
+      .card p {
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      .card strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      /* code */
+      code,
+      pre {
+        font-family: var(--font);
+        font-size: 0.85rem;
+        background: rgba(255, 255, 255, 0.04);
+        border-radius: 6px;
+      }
+      pre {
+        padding: 1rem 1.25rem;
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        margin: 0.75rem 0;
+        line-height: 1.5;
+      }
+      code {
+        padding: 0.15em 0.4em;
+      }
+      pre code {
+        padding: 0;
+        background: none;
+      }
+
+      /* tools grid */
+      .tools-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 0.5rem;
+      }
+      .tool-item {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.7rem 1rem;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .tool-item .icon {
+        font-size: 1.1rem;
+      }
+      .tool-item .name {
+        color: var(--text);
+      }
+
+      /* install cmd */
+      .install-cmd {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        background: #111;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 0.9rem 1.25rem;
+        margin: 0.5rem 0 1rem;
+      }
+      .install-cmd code {
+        font-size: 1rem;
+      }
+      .install-cmd .prompt {
+        color: var(--accent);
+      }
+
+      /* links */
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .links {
+        display: flex;
+        gap: 1.5rem;
+      }
+      .links a {
+        font-size: 0.9rem;
+      }
+
+      /* footer */
+      footer {
+        margin-top: 5rem;
+        padding-top: 2rem;
+        border-top: 1px solid var(--border);
+        font-size: 0.85rem;
+        color: var(--muted);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      @media (max-width: 600px) {
+        .container {
+          padding: 2.5rem 1.25rem;
+        }
+        header h1 {
+          font-size: 1.8rem;
+        }
+        .tools-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+        footer {
+          flex-direction: column;
+          gap: 0.5rem;
+          text-align: center;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>pi-google-services</h1>
+        <p>
+          Connect your Google account to your Pi AI agent — calendar, email,
+          tasks, drive, and contacts, all from your terminal.
+        </p>
+        <span class="badge">Open Source &bull; MIT</span>
+      </header>
+
+      <section>
+        <h2>Install</h2>
+        <div class="install-cmd">
+          <span class="prompt">$</span>
+          <code>pi install npm:pi-google-services</code>
+        </div>
+        <div class="install-cmd">
+          <span class="prompt">$</span>
+          <code>pi-google-services setup</code>
+        </div>
+        <p style="color: var(--muted); font-size: 0.9rem">
+          Opens your browser — authorize with Google — done.
+        </p>
+      </section>
+
+      <section>
+        <h2>26 tools across 5 services</h2>
+        <div class="tools-grid">
+          <div class="tool-item">
+            <span class="icon">📅</span><span class="name">Calendar (7)</span>
+          </div>
+          <div class="tool-item">
+            <span class="icon">📧</span><span class="name">Gmail (5)</span>
+          </div>
+          <div class="tool-item">
+            <span class="icon">✅</span><span class="name">Tasks (5)</span>
+          </div>
+          <div class="tool-item">
+            <span class="icon">📁</span><span class="name">Drive (6)</span>
+          </div>
+          <div class="tool-item">
+            <span class="icon">👤</span><span class="name">Contacts (3)</span>
+          </div>
+          <div class="tool-item">
+            <span class="icon">🎥</span><span class="name">Meet</span>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>How it works</h2>
+        <div class="card">
+          <strong>OAuth 2.0 with PKCE</strong>
+          <p>
+            Industry-standard authentication. You authorize once in your
+            browser, and a token is saved locally on your machine. All API calls
+            go directly from your terminal to Google — no intermediate servers,
+            no telemetry, no tracking.
+          </p>
+        </div>
+        <div class="card">
+          <strong>Single binary, zero dependencies</strong>
+          <p>
+            Written in Go. No runtime, no Docker, no npm. Just a single 15 MB
+            executable that runs on Linux and macOS.
+          </p>
+        </div>
+        <div class="card">
+          <strong>Open source & auditable</strong>
+          <p>
+            Every line of code is on GitHub. Built with provenance attestation.
+            You can verify the binary matches the source.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2>Why "This app is not verified"?</h2>
+        <div class="card">
+          <p>
+            Google's verification process requires a registered domain and a
+            formal brand review — designed for public web apps, not CLI tools.
+            This is normal. Click <strong>"Continue"</strong> to authorize. Your
+            data goes directly from your machine to Google.
+          </p>
+        </div>
+      </section>
+
+      <div class="links">
+        <a href="https://github.com/lucasvidela94/pi-google-services">GitHub</a>
+        <a href="https://www.npmjs.com/package/pi-google-services">npm</a>
+        <a href="privacy">Privacy</a>
+      </div>
+
+      <footer>
+        <span>pi-google-services &mdash; MIT License</span>
+        <span
+          >by
+          <a href="https://github.com/lucasvidela94">@lucasvidela94</a></span
+        >
+      </footer>
+    </div>
+  </body>
+</html>

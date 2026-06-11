@@ -119,6 +119,24 @@ The client ID is publicly visible in the authorization URL and only
 serves to identify which app is requesting access. The actual security
 is in the OAuth consent screen where **you** decide what to share.
 
+### Why Google Shows "This app is not verified"
+
+When you run `login` or `setup`, Google shows a warning screen saying
+the app is not verified. **This is normal and safe.**
+
+Google's verification process requires a registered domain, a formal
+brand review, and proof of ownership — it's designed for public web
+apps with a business behind them, not open-source CLI tools.
+
+The warning appears once per user. Click **"Continue"** to authorize.
+Your data goes directly from your machine to Google — no intermediate
+servers, no tracking, no telemetry.
+
+This is an open-source project built for utility, not monetization.
+Domain registration and Google verification are not a priority.
+Many popular CLI tools for Google services (like `gcalcli`) are also
+unverified. This does not affect security.
+
 ### Credential Storage
 
 | What | Where |

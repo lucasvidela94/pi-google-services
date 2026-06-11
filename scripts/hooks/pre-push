@@ -1,0 +1,30 @@
+#!/bin/bash
+# Git pre-push hook — validates version consistency before pushing tags.
+# Install: cp scripts/hooks/pre-push .git/hooks/pre-push && chmod +x .git/hooks/pre-push
+set -euo pipefail
+
+while read local_ref local_sha remote_ref remote_sha; do
+  # Only check pushes that include tags
+  if [[ "$remote_ref" == refs/tags/v* ]]; then
+    TAG_VERSION="${remote_ref#refs/tags/v}"
+
+    # Read version from package.json
+    PKG_VER=$(grep '"version"' package.json | head -1 | sed 's/.*"\(.*\)".*/\1/')
+
+    if [ "$TAG_VERSION" != "$PKG_VER" ]; then
+      echo ""
+      echo "❌ BLOCKED: Tag v${TAG_VERSION} pero package.json dice ${PKG_VER}"
+      echo ""
+      echo "   Corregí con:"
+      echo "   sed -i 's/\"version\": \"${PKG_VER}\"/\"version\": \"${TAG_VERSION}\"/' package.json"
+      echo "   git add package.json && git commit -m \"chore: bump to ${TAG_VERSION}\""
+      echo "   git tag v${TAG_VERSION} -f && git push origin v${TAG_VERSION} -f"
+      echo ""
+      exit 1
+    fi
+
+    echo "✅ Tag v${TAG_VERSION} coincide con package.json"
+  fi
+done
+
+exit 0

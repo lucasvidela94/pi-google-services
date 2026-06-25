@@ -2,10 +2,12 @@
 package gmail
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
 	"mime"
+	"strings"
 	"time"
 
 	"golang.org/x/oauth2"
@@ -132,9 +134,16 @@ func (s *Service) GetEmail(ctx context.Context, id string) (*EmailDetail, error)
 	return detail, nil
 }
 
-// SendEmail sends a new email.
-func (s *Service) SendEmail(ctx context.Context, to, subject, body string) (*gmail.Message, error) {
-	msg := createMessage(to, subject, body)
+// Attachment represents a file to attach to an email.
+type Attachment struct {
+	Filename string
+	MimeType string
+	Data     []byte
+}
+
+// SendEmail sends a new email with optional attachments.
+func (s *Service) SendEmail(ctx context.Context, to, subject, body string, attachments []Attachment) (*gmail.Message, error) {
+	msg := createMessage(to, subject, body, attachments)
 	sent, err := s.svc.Messages.Send("me", msg).Do()
 	if err != nil {
 		return nil, fmt.Errorf("send message: %w", err)
@@ -142,9 +151,9 @@ func (s *Service) SendEmail(ctx context.Context, to, subject, body string) (*gma
 	return sent, nil
 }
 
-// ReplyToEmail replies to an existing thread.
-func (s *Service) ReplyToEmail(ctx context.Context, threadID, to, subject, body string) (*gmail.Message, error) {
-	msg := createMessage(to, subject, body)
+// ReplyToEmail replies to an existing thread with optional attachments.
+func (s *Service) ReplyToEmail(ctx context.Context, threadID, to, subject, body string, attachments []Attachment) (*gmail.Message, error) {
+	msg := createMessage(to, subject, body, attachments)
 	msg.ThreadId = threadID
 	sent, err := s.svc.Messages.Send("me", msg).Do()
 	if err != nil {
@@ -185,13 +194,55 @@ func extractBody(part *gmail.MessagePart, depth int) (body string, html bool) {
 	return "", false
 }
 
-func createMessage(to, subject, body string) *gmail.Message {
-	// Use Go's standard mime.BEncoding for proper MIME encoded-word format.
-	// This handles emojis and non-ASCII characters correctly.
+func createMessage(to, subject, body string, attachments []Attachment) *gmail.Message {
 	encSubject := mime.BEncoding.Encode("UTF-8", subject)
-	msg := fmt.Sprintf("From: me\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\n\r\n%s", to, encSubject, body)
-	encoded := base64.URLEncoding.EncodeToString([]byte(msg))
+
+	if len(attachments) == 0 {
+		msg := fmt.Sprintf("From: me\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\n\r\n%s", to, encSubject, body)
+		encoded := base64.URLEncoding.EncodeToString([]byte(msg))
+		return &gmail.Message{Raw: encoded}
+	}
+
+	boundary := fmt.Sprintf("pi-google-%d", time.Now().UnixNano())
+
+	var buf bytes.Buffer
+	fmt.Fprintf(&buf, "From: me\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: multipart/mixed; boundary=\"%s\"\r\n\r\n", to, encSubject, boundary)
+
+	fmt.Fprintf(&buf, "--%s\r\nContent-Type: text/plain; charset=\"UTF-8\"\r\n\r\n%s\r\n", boundary, body)
+
+	for _, att := range attachments {
+		mt := att.MimeType
+		if mt == "" {
+			mt = "application/octet-stream"
+		}
+		fmt.Fprintf(&buf, "--%s\r\n", boundary)
+		fmt.Fprintf(&buf, "Content-Type: %s\r\n", mt)
+		fmt.Fprintf(&buf, "Content-Transfer-Encoding: base64\r\n")
+		fmt.Fprintf(&buf, "Content-Disposition: attachment; filename=\"%s\"\r\n\r\n", escapeFilename(att.Filename))
+
+		encoded := base64.StdEncoding.EncodeToString(att.Data)
+		for i := 0; i < len(encoded); i += 76 {
+			end := i + 76
+			if end > len(encoded) {
+				end = len(encoded)
+			}
+			buf.WriteString(encoded[i:end])
+			buf.WriteString("\r\n")
+		}
+	}
+
+	fmt.Fprintf(&buf, "--%s--\r\n", boundary)
+
+	encoded := base64.URLEncoding.EncodeToString(buf.Bytes())
 	return &gmail.Message{Raw: encoded}
+}
+
+// escapeFilename removes characters that would break the Content-Disposition header.
+func escapeFilename(name string) string {
+	name = strings.ReplaceAll(name, "\"", "'")
+	name = strings.ReplaceAll(name, "\r", "")
+	name = strings.ReplaceAll(name, "\n", "")
+	return name
 }
 
 // HumanDate parses and reformats RFC1123 dates for display.

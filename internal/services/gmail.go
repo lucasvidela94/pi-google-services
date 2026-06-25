@@ -4,20 +4,27 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"mime"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/sombi/pi-google-services/internal/drive"
 	"github.com/sombi/pi-google-services/internal/gmail"
 	"github.com/sombi/pi-google-services/internal/mcp"
 )
 
 // GmailService implements the Service interface for Gmail.
 type GmailService struct {
-	api *gmail.Service
+	api      *gmail.Service
+	driveAPI *drive.Service
 }
 
 // NewGmail creates a GmailService from the Gmail API wrapper.
-func NewGmail(api *gmail.Service) *GmailService {
-	return &GmailService{api: api}
+// driveAPI is optional — when provided, email attachments can reference
+// Google Drive file IDs. Pass nil to support local-file attachments only.
+func NewGmail(api *gmail.Service, driveAPI *drive.Service) *GmailService {
+	return &GmailService{api: api, driveAPI: driveAPI}
 }
 
 func (s *GmailService) Name() string { return "gmail" }
@@ -68,20 +75,31 @@ func (s *GmailService) Tools() []mcp.ToolDefinition {
 		},
 		{
 			Name:        "send-email",
-			Description: "Send an email",
+			Description: "Send an email with optional file attachments",
 			InputSchema: mcp.InputSchema{
 				Type: "object",
 				Properties: map[string]mcp.PropertySchema{
 					"to":      {Type: "string", Description: "Recipient email"},
 					"subject": {Type: "string", Description: "Email subject"},
 					"body":    {Type: "string", Description: "Email body text"},
+					"attachments": {
+						Type:        "array",
+						Description: "Files to attach. Each item can have 'localPath' (local file) or 'driveFileId' (Google Drive file ID).",
+						Items: &mcp.PropertySchema{
+							Type: "object",
+							Properties: map[string]mcp.PropertySchema{
+								"localPath":   {Type: "string", Description: "Local file path to attach"},
+								"driveFileId": {Type: "string", Description: "Google Drive file ID to attach"},
+							},
+						},
+					},
 				},
 				Required: []string{"to", "subject", "body"},
 			},
 		},
 		{
 			Name:        "reply-to-email",
-			Description: "Reply to an email thread",
+			Description: "Reply to an email thread with optional file attachments",
 			InputSchema: mcp.InputSchema{
 				Type: "object",
 				Properties: map[string]mcp.PropertySchema{
@@ -89,6 +107,17 @@ func (s *GmailService) Tools() []mcp.ToolDefinition {
 					"to":       {Type: "string", Description: "Recipient email"},
 					"subject":  {Type: "string", Description: "Reply subject"},
 					"body":     {Type: "string", Description: "Reply body text"},
+					"attachments": {
+						Type:        "array",
+						Description: "Files to attach. Each item can have 'localPath' (local file) or 'driveFileId' (Google Drive file ID).",
+						Items: &mcp.PropertySchema{
+							Type: "object",
+							Properties: map[string]mcp.PropertySchema{
+								"localPath":   {Type: "string", Description: "Local file path to attach"},
+								"driveFileId": {Type: "string", Description: "Google Drive file ID to attach"},
+							},
+						},
+					},
 				},
 				Required: []string{"threadId", "to", "subject", "body"},
 			},
@@ -206,9 +235,10 @@ func (s *GmailService) handleSearchEmails(ctx context.Context, params json.RawMe
 
 func (s *GmailService) handleSendEmail(ctx context.Context, params json.RawMessage) (interface{}, *mcp.RPCError) {
 	var args struct {
-		To      string `json:"to"`
-		Subject string `json:"subject"`
-		Body    string `json:"body"`
+		To          string             `json:"to"`
+		Subject     string             `json:"subject"`
+		Body        string             `json:"body"`
+		Attachments []attachmentInput  `json:"attachments"`
 	}
 	if err := json.Unmarshal(params, &args); err != nil {
 		return nil, &mcp.RPCError{Code: -32602, Message: "Invalid arguments", Data: err.Error()}
@@ -217,20 +247,30 @@ func (s *GmailService) handleSendEmail(ctx context.Context, params json.RawMessa
 		return nil, &mcp.RPCError{Code: -32602, Message: "to and subject required"}
 	}
 
-	sent, err := s.api.SendEmail(ctx, args.To, args.Subject, args.Body)
+	attachments, attErr := s.resolveAttachments(ctx, args.Attachments)
+	if attErr != nil {
+		return nil, attErr
+	}
+
+	sent, err := s.api.SendEmail(ctx, args.To, args.Subject, args.Body, attachments)
 	if err != nil {
 		return nil, &mcp.RPCError{Code: -32603, Message: "Failed to send", Data: err.Error()}
 	}
 
-	return contentResponse(fmt.Sprintf("✅ Email sent to %s\nID: %s", args.To, sent.Id)), nil
+	result := fmt.Sprintf("✅ Email sent to %s\nID: %s", args.To, sent.Id)
+	if len(attachments) > 0 {
+		result += fmt.Sprintf("\n📎 Attachments: %d", len(attachments))
+	}
+	return contentResponse(result), nil
 }
 
 func (s *GmailService) handleReplyEmail(ctx context.Context, params json.RawMessage) (interface{}, *mcp.RPCError) {
 	var args struct {
-		ThreadID string `json:"threadId"`
-		To       string `json:"to"`
-		Subject  string `json:"subject"`
-		Body     string `json:"body"`
+		ThreadID    string            `json:"threadId"`
+		To          string            `json:"to"`
+		Subject     string            `json:"subject"`
+		Body        string            `json:"body"`
+		Attachments []attachmentInput `json:"attachments"`
 	}
 	if err := json.Unmarshal(params, &args); err != nil {
 		return nil, &mcp.RPCError{Code: -32602, Message: "Invalid arguments", Data: err.Error()}
@@ -239,12 +279,87 @@ func (s *GmailService) handleReplyEmail(ctx context.Context, params json.RawMess
 		return nil, &mcp.RPCError{Code: -32602, Message: "threadId, to, subject required"}
 	}
 
-	sent, err := s.api.ReplyToEmail(ctx, args.ThreadID, args.To, args.Subject, args.Body)
+	attachments, attErr := s.resolveAttachments(ctx, args.Attachments)
+	if attErr != nil {
+		return nil, attErr
+	}
+
+	sent, err := s.api.ReplyToEmail(ctx, args.ThreadID, args.To, args.Subject, args.Body, attachments)
 	if err != nil {
 		return nil, &mcp.RPCError{Code: -32603, Message: "Failed to reply", Data: err.Error()}
 	}
 
-	return contentResponse(fmt.Sprintf("✅ Reply sent\nID: %s", sent.Id)), nil
+	result := fmt.Sprintf("✅ Reply sent\nID: %s", sent.Id)
+	if len(attachments) > 0 {
+		result += fmt.Sprintf("\n📎 Attachments: %d", len(attachments))
+	}
+	return contentResponse(result), nil
+}
+
+// attachmentInput is the JSON shape accepted by the tool schema.
+type attachmentInput struct {
+	LocalPath   string `json:"localPath"`
+	DriveFileID string `json:"driveFileId"`
+}
+
+// resolveAttachments converts attachment input params into gmail.Attachment
+// structs, reading local files or downloading from Drive as needed.
+func (s *GmailService) resolveAttachments(ctx context.Context, inputs []attachmentInput) ([]gmail.Attachment, *mcp.RPCError) {
+	if len(inputs) == 0 {
+		return nil, nil
+	}
+
+	attachments := make([]gmail.Attachment, 0, len(inputs))
+	for i, input := range inputs {
+		switch {
+		case input.LocalPath != "":
+			data, err := os.ReadFile(input.LocalPath)
+			if err != nil {
+				return nil, &mcp.RPCError{
+					Code:    -32603,
+					Message: fmt.Sprintf("Failed to read attachment %d: %s", i+1, input.LocalPath),
+					Data:    err.Error(),
+				}
+			}
+			mimeType := mime.TypeByExtension(filepath.Ext(input.LocalPath))
+			if mimeType == "" {
+				mimeType = "application/octet-stream"
+			}
+			attachments = append(attachments, gmail.Attachment{
+				Filename: filepath.Base(input.LocalPath),
+				MimeType: mimeType,
+				Data:     data,
+			})
+
+		case input.DriveFileID != "":
+			if s.driveAPI == nil {
+				return nil, &mcp.RPCError{
+					Code:    -32603,
+					Message: "Drive attachments not available (Drive API not configured)",
+				}
+			}
+			content, err := s.driveAPI.DownloadContent(ctx, input.DriveFileID)
+			if err != nil {
+				return nil, &mcp.RPCError{
+					Code:    -32603,
+					Message: fmt.Sprintf("Failed to download Drive file %s", input.DriveFileID),
+					Data:    err.Error(),
+				}
+			}
+			attachments = append(attachments, gmail.Attachment{
+				Filename: content.Name,
+				MimeType: content.MimeType,
+				Data:     content.Data,
+			})
+
+		default:
+			return nil, &mcp.RPCError{
+				Code:    -32602,
+				Message: fmt.Sprintf("Attachment %d must have 'localPath' or 'driveFileId'", i+1),
+			}
+		}
+	}
+	return attachments, nil
 }
 
 // stripHTML removes HTML tags for plain-text display.

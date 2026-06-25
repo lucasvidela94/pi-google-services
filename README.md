@@ -45,8 +45,25 @@ After updating, restart your Pi session.
 | `list-inbox` | Show recent emails |
 | `get-email` | Read full email by ID |
 | `search-emails` | Search with Gmail syntax |
-| `send-email` | Send new email |
-| `reply-to-email` | Reply to thread |
+| `send-email` | Send new email with optional file attachments |
+| `reply-to-email` | Reply to thread with optional file attachments |
+
+### Email Attachments
+
+Both `send-email` and `reply-to-email` accept an optional `attachments` array.
+Each attachment can reference a local file or a Google Drive file:
+
+```json
+{
+  "to": "user@example.com",
+  "subject": "Report",
+  "body": "See attached",
+  "attachments": [
+    { "localPath": "/home/user/report.pdf" },
+    { "driveFileId": "1a2b3c4d5e6f" }
+  ]
+}
+```
 
 ### Tasks (5)
 
@@ -162,7 +179,7 @@ go build -o pi-google-services .
 go test ./... -v
 ```
 
-15 unit tests (MCP protocol, config, service metadata, services).
+26 unit tests (MCP protocol, config, service metadata, services, MIME multipart attachments).
 
 ## License
 

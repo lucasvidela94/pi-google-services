@@ -51,9 +51,11 @@ type InputSchema struct {
 
 // PropertySchema describes a single parameter.
 type PropertySchema struct {
-	Type        string      `json:"type"`
-	Description string      `json:"description,omitempty"`
-	Default     interface{} `json:"default,omitempty"`
+	Type        string                    `json:"type"`
+	Description string                    `json:"description,omitempty"`
+	Default     interface{}               `json:"default,omitempty"`
+	Items       *PropertySchema           `json:"items,omitempty"`
+	Properties  map[string]PropertySchema `json:"properties,omitempty"`
 }
 
 // ToolHandler processes a tool call and returns content or an error.

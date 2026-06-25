@@ -208,6 +208,40 @@ func (s *Service) DownloadFile(ctx context.Context, fileID, destPath string) err
 	return nil
 }
 
+// FileContent holds downloaded file data in memory.
+type FileContent struct {
+	Name     string
+	MimeType string
+	Data     []byte
+}
+
+// DownloadContent downloads a file's content to memory (for email attachments, etc.).
+func (s *Service) DownloadContent(ctx context.Context, fileID string) (*FileContent, error) {
+	info, err := s.svc.Files.Get(fileID).
+		Fields("id,name,mimeType,size").
+		Do()
+	if err != nil {
+		return nil, fmt.Errorf("get file metadata: %w", err)
+	}
+
+	resp, err := s.svc.Files.Get(fileID).Download()
+	if err != nil {
+		return nil, fmt.Errorf("download file: %w", err)
+	}
+	defer resp.Body.Close()
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("read file content: %w", err)
+	}
+
+	return &FileContent{
+		Name:     info.Name,
+		MimeType: info.MimeType,
+		Data:     data,
+	}, nil
+}
+
 // CreateFolder creates a new folder in Drive.
 func (s *Service) CreateFolder(ctx context.Context, name, parentFolderID string) (*FileSummary, error) {
 	folder := &drive.File{

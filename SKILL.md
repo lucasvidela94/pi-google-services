@@ -133,29 +133,33 @@ Arguments:
 - `maxResults` — max results (default: 20)
 
 ### `send-email`
-Send a new email.
+Send a new email with optional file attachments.
 
 Examples:
 - "enviále un mail a lucsk94@gmail.com con asunto 'Prueba' y cuerpo 'Hola, esto es una prueba'"
 - "mandále un email a juan@mail.com diciendo que la reunión se pasó al viernes"
+- "enviále un email a maria@work.com con el PDF /home/user/reporte.pdf adjunto"
 
 Arguments:
 - `to` (required) — recipient email
 - `subject` (required) — email subject
 - `body` — email body text
+- `attachments` — array of files to attach. Each item can have `localPath` (local file) or `driveFileId` (Google Drive file ID)
 
 ### `reply-to-email`
-Reply to an existing thread.
+Reply to an existing thread with optional file attachments.
 
 Examples:
 - "respondé el mail de Natalia aceptando la invitación"
 - "contestále al de belo que ya lo vi"
+- "respondé al mail de ventas adjuntando /home/user/cotizacion.pdf"
 
 Arguments:
 - `threadId` (required) — thread to reply to
 - `to` (required) — recipient email
 - `subject` (required) — reply subject
 - `body` — reply body text
+- `attachments` — array of files to attach. Each item can have `localPath` (local file) or `driveFileId` (Google Drive file ID)
 
 ## Tasks tools
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.16
+
+- **Fix: install.js redirect handling** — GitHub releases return HTTP 302 redirects, but the download function used `res.location` (non-existent) instead of `res.headers.location`. Redirects were never followed, causing every install/update to fail with "HTTP 302" error.
+
 ## v0.1.15
 
 - **Fix: install.js URL doubling** — `REPO` already contains the full GitHub URL, so prepending `https://github.com/` produced `https://github.com/https://github.com/...` (404). This was the root cause of install/update always failing — the binary was never downloaded, always falling back to whatever was in `~/.local/bin/`.

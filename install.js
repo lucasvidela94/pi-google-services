@@ -43,11 +43,11 @@ function download(url, dest) {
 		const file = fs.createWriteStream(dest);
 		https
 			.get(url, (res) => {
-				if (res.statusCode >= 300 && res.location) {
+				if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
 					// Follow redirect
 					file.close();
 					fs.unlinkSync(dest);
-					return download(res.location, dest).then(resolve).catch(reject);
+					return download(res.headers.location, dest).then(resolve).catch(reject);
 				}
 				if (res.statusCode !== 200) {
 					file.close();

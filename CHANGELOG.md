@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.14
+
+- **Fix: install.js platform mapping** — `x64` now correctly maps to `amd64` to match GitHub Release asset names (Go's `GOARCH` nomenclature). Previously, Linux x64 users couldn't download the binary during install/update.
+
 ## v0.1.13
 
 - **Email attachments**: `send-email` and `reply-to-email` now accept an optional `attachments` array

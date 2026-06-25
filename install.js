@@ -28,9 +28,9 @@ function platform() {
 	const arch = os.arch();
 	const plat = os.platform();
 
-	if (plat === "linux" && arch === "x64") return "linux-x64";
+	if (plat === "linux" && arch === "x64") return "linux-amd64";
 	if (plat === "linux" && arch === "arm64") return "linux-arm64";
-	if (plat === "darwin" && arch === "x64") return "darwin-x64";
+	if (plat === "darwin" && arch === "x64") return "darwin-amd64";
 	if (plat === "darwin" && arch === "arm64") return "darwin-arm64";
 
 	console.error(`Unsupported platform: ${plat}-${arch}`);

@@ -107,7 +107,7 @@ async function main() {
 
 	const plat = platform();
 	const assetName = `pi-google-services-${plat}.gz`;
-	const url = `https://github.com/${REPO}/releases/download/${VERSION}/${assetName}`;
+	const url = `${REPO}/releases/download/${VERSION}/${assetName}`;
 	const dest = path.join(os.tmpdir(), assetName);
 	const binDir = BIN_DIR;
 
@@ -168,7 +168,7 @@ async function main() {
 	// Download credentials.json only if missing
 	const credsDest = path.join(CONFIG_DIR, "credentials.json");
 	if (!fs.existsSync(credsDest)) {
-		const credsUrl = `https://github.com/${REPO}/releases/download/${VERSION}/credentials.json`;
+		const credsUrl = `${REPO}/releases/download/${VERSION}/credentials.json`;
 		console.log(`  ⬇ Downloading credentials...`);
 		try {
 			await download(credsUrl, credsDest);

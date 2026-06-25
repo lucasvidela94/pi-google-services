@@ -1,6 +1,6 @@
 {
   "name": "pi-google-services",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "Google Calendar & Gmail MCP server for Pi — login once, manage your calendar and emails from your AI agent.",
   "keywords": [
     "pi-package"

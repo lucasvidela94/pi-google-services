@@ -26,7 +26,7 @@ import (
 	"github.com/sombi/pi-google-services/internal/tasks"
 )
 
-const version = "0.1.10"
+const version = "0.1.13"
 
 func main() {
 	log.SetFlags(0)
@@ -102,7 +102,7 @@ func getCredentialsJSON() ([]byte, error) {
 func registeredServices() []services.Service {
 	return []services.Service{
 		services.NewCalendar(nil), // placeholders; api set during serve
-		services.NewGmail(nil),
+		services.NewGmail(nil, nil),
 		services.NewTasks(nil),
 		services.NewDrive(nil),
 		services.NewContacts(nil),
@@ -256,7 +256,7 @@ func cmdServe() {
 	// Build MCP server with registered services
 	server := mcp.New()
 	registerServiceTools(server, services.NewCalendar(calSvc))
-	registerServiceTools(server, services.NewGmail(gmailSvc))
+	registerServiceTools(server, services.NewGmail(gmailSvc, driveSvc))
 	registerServiceTools(server, services.NewTasks(tasksSvc))
 	registerServiceTools(server, services.NewDrive(driveSvc))
 	registerServiceTools(server, services.NewContacts(contactsSvc))

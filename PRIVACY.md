@@ -28,7 +28,11 @@ No data passes through any intermediate server. The binary never:
 
 - **OAuth tokens** are saved locally in `~/.config/pi-google-services/tokens.json`
   with restricted file permissions (0600).
-- **Credentials** are downloaded once during installation and never leave your machine.
+- **OAuth client ID** is baked into the release binary (public by design —
+  it is visible in every authorization URL). No credentials are downloaded
+  at install time. Advanced users can use their own Google Cloud project via
+  `GOOGLE_OAUTH_CREDENTIALS` or a local `credentials.json`, which take
+  precedence over the baked-in client.
 
 ## Third-party services
 

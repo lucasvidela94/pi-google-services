@@ -5,9 +5,13 @@
  * Idempotent. Safe to run more than once. Used both as npm postinstall and by
  * the Pi extension to self-heal when npm's allowScripts blocked the postinstall.
  *
- * The npm tarball already ships the platform binaries and credentials.json, so
- * by default nothing is downloaded: assets are unpacked from the local package.
+ * The npm tarball already ships the platform binaries, so by default nothing
+ * is downloaded: assets are unpacked from the local package.
  * GitHub Releases is only a fallback for development checkouts without bin/.
+ *
+ * OAuth note: the binary ships with a pre-registered public OAuth client ID
+ * baked in at release time (see internal/auth/embedded.go). No credentials
+ * are downloaded or copied at install — your tokens stay on your machine.
  */
 
 const fs = require("fs");
@@ -26,8 +30,6 @@ const PI_MCP_PATH = path.join(PI_AGENT_DIR, "mcp.json");
 const BIN_DIR = path.join(os.homedir(), ".local", "bin");
 const BIN_NAME = "pi-google-services";
 const BIN_PATH = path.join(BIN_DIR, BIN_NAME);
-const CONFIG_DIR = path.join(os.homedir(), ".config", "pi-google-services");
-const CREDS_DEST = path.join(CONFIG_DIR, "credentials.json");
 
 function platform() {
 	const arch = os.arch();
@@ -140,24 +142,6 @@ async function ensureBinary() {
 	console.log(`  ✓ Installed to ${BIN_PATH}`);
 }
 
-function ensureCredentials() {
-	if (fs.existsSync(CREDS_DEST)) {
-		console.log("  ✓ Credentials already present");
-		return;
-	}
-	fs.mkdirSync(CONFIG_DIR, { recursive: true });
-
-	const localSrc = localAsset("credentials.json");
-	if (fs.existsSync(localSrc)) {
-		fs.copyFileSync(localSrc, CREDS_DEST);
-		console.log(`  ✓ Credentials saved to ${CREDS_DEST}`);
-		return;
-	}
-	console.warn(
-		"  ⚠ credentials.json not bundled. Set GOOGLE_OAUTH_CREDENTIALS or run setup manually.",
-	);
-}
-
 function ensureMcpConfig() {
 	let config;
 	if (fs.existsSync(PI_MCP_PATH)) {
@@ -195,7 +179,6 @@ async function main() {
 	console.log("==============================\n");
 
 	await ensureBinary();
-	ensureCredentials();
 	const mcpOk = ensureMcpConfig();
 
 	if (!mcpOk) {

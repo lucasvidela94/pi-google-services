@@ -26,7 +26,7 @@ import (
 	"github.com/sombi/pi-google-services/internal/tasks"
 )
 
-const version = "0.1.21"
+const version = "0.1.22"
 
 func main() {
 	log.SetFlags(0)
@@ -77,25 +77,29 @@ Update:   pi-google-services update
 `, version)
 }
 
-// getCredentialsJSON reads credentials from file or env var.
-// Credentials are NOT embedded in the binary for security.
-// install.js downloads both binary + credentials.json.
-func getCredentialsJSON() ([]byte, error) {
-	// 1. GOOGLE_OAUTH_CREDENTIALS env var
+// loadCredentials resolves the OAuth client, in priority order:
+//  1. File pointed by GOOGLE_OAUTH_CREDENTIALS (bring your own project)
+//  2. ~/.config/pi-google-services/credentials.json (existing installs)
+//  3. ./credentials.json (local development)
+//  4. Credentials baked into the binary at release time (default)
+func loadCredentials() (*config.Credentials, error) {
 	if path := os.Getenv("GOOGLE_OAUTH_CREDENTIALS"); path != "" {
-		return os.ReadFile(path)
-	}
-	// 2. Config directory (installed by install.js)
-	if dir, err := config.Dir(); err == nil {
-		if data, err := os.ReadFile(filepath.Join(dir, "credentials.json")); err == nil {
-			return data, nil
+		if creds, err := config.LoadCredentials(path); err == nil {
+			return creds, nil
 		}
 	}
-	// 3. Current directory (development)
-	if data, err := os.ReadFile("credentials.json"); err == nil {
-		return data, nil
+	if dir, err := config.Dir(); err == nil {
+		if creds, err := config.LoadCredentials(filepath.Join(dir, "credentials.json")); err == nil {
+			return creds, nil
+		}
 	}
-	return nil, fmt.Errorf("credentials.json not found. Run install.js or set GOOGLE_OAUTH_CREDENTIALS")
+	if creds, err := config.LoadCredentials("credentials.json"); err == nil {
+		return creds, nil
+	}
+	if creds, ok := auth.EmbeddedCredentials(); ok {
+		return creds, nil
+	}
+	return nil, fmt.Errorf("no OAuth client configured. Reinstall the package or set GOOGLE_OAUTH_CREDENTIALS to your own credentials.json")
 }
 
 // registeredServices returns all available services with their scopes.
@@ -128,12 +132,8 @@ func allScopes() []string {
 // always requesting every registered service scope. login, setup and serve all
 // share this single source of truth, so every flow asks Google for the same
 // permissions — no hardcoded subsets, no drift between commands.
-func newAuthenticator(credsData []byte) (*auth.Authenticator, error) {
-	creds, err := config.LoadCredentialsFromBytes(credsData)
-	if err != nil {
-		return nil, fmt.Errorf("parse credentials: %w", err)
-	}
-	return auth.NewFromCredentials(creds, allScopes()), nil
+func newAuthenticator(creds *config.Credentials) *auth.Authenticator {
+	return auth.NewFromCredentials(creds, allScopes())
 }
 
 // All tools aggregated from all services.
@@ -157,17 +157,14 @@ func wantsNoBrowser(args []string) bool {
 }
 
 func cmdLogin(noBrowser bool) {
-	credsData, err := getCredentialsJSON()
+	creds, err := loadCredentials()
 	if err != nil {
-		fmt.Println("❌ No se encontraron credenciales.")
-		fmt.Println("   Seteá GOOGLE_OAUTH_CREDENTIALS o copiá credentials.json")
+		fmt.Println("❌ No se encontró cliente OAuth.")
+		fmt.Println("   Reinstalá el package o seteá GOOGLE_OAUTH_CREDENTIALS con tu propio credentials.json")
 		os.Exit(1)
 	}
 
-	a, err := newAuthenticator(credsData)
-	if err != nil {
-		log.Fatalf("Credenciales inválidas: %v", err)
-	}
+	a := newAuthenticator(creds)
 
 	ctx := context.Background()
 
@@ -218,14 +215,11 @@ func cmdServe() {
 	// Always build the authenticator from client credentials with all scopes.
 	// Never trust scopes persisted in config.json — they can drift out of sync
 	// with the registered services (see issue #6).
-	credsData, err := getCredentialsJSON()
+	creds, err := loadCredentials()
 	if err != nil {
-		log.Fatalf("credentials.json no encontrado: %v", err)
+		log.Fatalf("OAuth client no configurado: %v", err)
 	}
-	a, err := newAuthenticator(credsData)
-	if err != nil {
-		log.Fatalf("Credenciales inválidas: %v", err)
-	}
+	a := newAuthenticator(creds)
 
 	ctx := context.Background()
 	ts := a.TokenSource(ctx, token)
@@ -274,9 +268,9 @@ func cmdServe() {
 
 func cmdSetup(noBrowser bool) {
 	// Login flow
-	credsData, err := getCredentialsJSON()
+	creds, err := loadCredentials()
 	if err != nil {
-		fmt.Println("❌ credentials.json no encontrado.")
+		fmt.Println("❌ Cliente OAuth no configurado.")
 		fmt.Println("   Asegurate de haber instalado el package con: pi install npm:pi-google-services")
 		os.Exit(1)
 	}
@@ -292,10 +286,7 @@ func cmdSetup(noBrowser bool) {
 		return
 	}
 
-	a, err := newAuthenticator(credsData)
-	if err != nil {
-		log.Fatalf("Credenciales inválidas: %v", err)
-	}
+	a := newAuthenticator(creds)
 	ctx := context.Background()
 
 	fmt.Println("\n🔐 Autorizando con Google...")

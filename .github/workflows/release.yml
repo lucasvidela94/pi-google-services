@@ -39,25 +39,34 @@ jobs:
         with:
           go-version: "1.25"
 
-      # Credentials are NOT in the repo (security). They're stored as a
-      # GitHub secret (GOOGLE_OAUTH_CREDENTIALS_JSON) and decoded during CI.
-      - name: Write credentials.json
-        env:
-          CREDS: ${{ secrets.GOOGLE_OAUTH_CREDENTIALS_JSON }}
-        run: |
-          if [ -n "$CREDS" ]; then
-            echo "$CREDS" > credentials.json
-          else
-            echo "Warning: GOOGLE_OAUTH_CREDENTIALS_JSON not set. Build without embedded credentials."
-          fi
-
+      # The OAuth client ID is public by design (it appears in every
+      # authorization URL, like rclone/gcalcli/gh). It is NOT in the git repo:
+      # CI reads GOOGLE_OAUTH_CREDENTIALS_JSON and bakes client_id/secret into
+      # the binary via ldflags (see internal/auth/embedded.go). Nothing secret
+      # is shipped in the npm tarball and install.js downloads no credentials.
       - name: Build binary
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
+          CREDS: ${{ secrets.GOOGLE_OAUTH_CREDENTIALS_JSON }}
         run: |
           BINARY="pi-google-services-${{ matrix.goos }}-${{ matrix.goarch }}"
-          go build -o "$BINARY" -ldflags="-s -w" .
+          LDFLAGS="-s -w"
+          if [ -n "$CREDS" ]; then
+            echo "$CREDS" > /tmp/creds.json
+            CLIENT_ID=$(jq -r '.installed.client_id // .web.client_id // empty' /tmp/creds.json)
+            CLIENT_SECRET=$(jq -r '.installed.client_secret // .web.client_secret // empty' /tmp/creds.json)
+            rm /tmp/creds.json
+            if [ -n "$CLIENT_ID" ]; then
+              LDFLAGS="$LDFLAGS -X github.com/sombi/pi-google-services/internal/auth.embeddedClientID=$CLIENT_ID"
+            fi
+            if [ -n "$CLIENT_SECRET" ]; then
+              LDFLAGS="$LDFLAGS -X github.com/sombi/pi-google-services/internal/auth.embeddedClientSecret=$CLIENT_SECRET"
+            fi
+          else
+            echo "Warning: GOOGLE_OAUTH_CREDENTIALS_JSON not set. Binary will require BYO credentials."
+          fi
+          go build -o "$BINARY" -ldflags="$LDFLAGS" .
           gzip -9 -k "$BINARY"
 
       - name: Upload binary artifact
@@ -66,41 +75,10 @@ jobs:
           name: pi-google-services-${{ matrix.goos }}-${{ matrix.goarch }}.gz
           path: pi-google-services-${{ matrix.goos }}-${{ matrix.goarch }}.gz
 
-  bundle-credentials:
-    name: Bundle credentials
-    runs-on: ubuntu-latest
-    steps:
-      - name: Write credentials.json
-        env:
-          CREDS: ${{ secrets.GOOGLE_OAUTH_CREDENTIALS_JSON }}
-        run: |
-          if [ -n "$CREDS" ]; then
-            echo "$CREDS" > credentials.json
-          else
-            echo "error: GOOGLE_OAUTH_CREDENTIALS_JSON not set" >&2
-            exit 1
-          fi
-
-      - name: Validate credentials.json
-        run: |
-          if ! jq empty credentials.json 2>/dev/null; then
-            echo "❌ credentials.json is invalid JSON" >&2
-            echo "   GOOGLE_OAUTH_CREDENTIALS_JSON was saved with line-wrapping" >&2
-            echo "   (literal newlines inside string values). Re-save it as a" >&2
-            echo "   single-line JSON in GitHub settings, then re-tag the release." >&2
-            exit 1
-          fi
-          echo "✅ credentials.json is valid JSON"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: credentials.json
-          path: credentials.json
-
   publish-npm:
     name: Publish to npm
     runs-on: ubuntu-latest
-    needs: [build, bundle-credentials]
+    needs: [build]
     steps:
       - uses: actions/checkout@v4
 
@@ -115,10 +93,8 @@ jobs:
       - name: Prepare npm package
         run: |
           mkdir -p publish/bin
-          # Binaries
+          # Binaries (OAuth client is baked in via ldflags; no credentials file)
           find artifacts/ -name "*.gz" -exec cp {} publish/bin/ \;
-          # Credentials (for install.js to download)
-          find artifacts/ -name "credentials.json" -exec cp {} publish/ \;
           # Package files
           cp package.json publish/
           cp README.md publish/
@@ -134,7 +110,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [build, bundle-credentials]
+    needs: [build]
     steps:
       - uses: actions/checkout@v4
 
@@ -151,4 +127,3 @@ jobs:
           prerelease: false
           files: |
             artifacts/**/*.gz
-            artifacts/credentials.json/credentials.json

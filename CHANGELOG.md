@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.22
+
+- **Security/trust: OAuth client baked into the binary, nothing downloaded at install** — `install.js` no longer ships or copies `credentials.json` (that postinstall copy is what scanners and reviewers flag). Release CI now bakes the public desktop client ID into the binary via `ldflags` (`internal/auth/embedded.go`) from the same `GOOGLE_OAUTH_CREDENTIALS_JSON` secret. End-user flow is unchanged: install, `setup`, authorize. Own-project override still wins via `GOOGLE_OAUTH_CREDENTIALS` or local `credentials.json`.
+- **Legal: added `LICENSE` (MIT)** — the README always said MIT but the file was missing, leaving forks in a gray zone.
+- **Docs: "About the Client ID" now states the tradeoff** — why shared (zero-config), plus honest limits: unverified warning, 100-user cap, shared quota, single point of suspension.
+- Gracias a [@giuseppecrj](https://github.com/giuseppecrj), cuyo fork endurecido expuso estos huecos (credenciales en postinstall, `LICENSE` faltante).
+
 ## v0.1.21
 
 - **Fix: `pi update --extensions` ya no falla con ETXTBSY** — `install.js` sobrescribía el binario en `~/.local/bin` con `fs.writeFileSync`, que en Linux no puede reemplazar un ejecutable en uso (el MCP server corriendo). Ahora escribe a un archivo temporal y hace `rename` atómico sobre el destino: el proceso viejo conserva su inode y el siguiente arranque usa el binario nuevo. Mismo patrón que `downloadUpdate` en `main.go`.

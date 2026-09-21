@@ -2,8 +2,10 @@
 pi-google-services
 pi-google-services-*
 
-# OAuth credentials (downloaded by install.js or kept locally)
-# Stored as GitHub secret GOOGLE_OAUTH_CREDENTIALS_JSON in CI
+# OAuth credentials (local dev override only — never commit)
+# Release binaries carry the public client ID baked in via ldflags
+# (see internal/auth/embedded.go). The secret GOOGLE_OAUTH_CREDENTIALS_JSON
+# lives only in GitHub Actions, never in the repo or npm tarball.
 credentials.json
 
 # OS files

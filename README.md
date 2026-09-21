@@ -103,7 +103,7 @@ pi-google-services/          npm package (pi-package)
 ├── main.go                  CLI entry point
 ├── package.json             Pi manifest + npm
 ├── SKILL.md                 Pi skill
-├── install.js               postinstall: download binary + credentials
+├── install.js               postinstall: install binary + wire Pi MCP config
 ├── internal/
 │   ├── mcp/                 MCP protocol (JSON-RPC 2.0 / stdio)
 │   ├── services/            Service interface + tool implementations
@@ -111,14 +111,16 @@ pi-google-services/          npm package (pi-package)
 │   │   └── gmail.go         5 tools
 │   ├── calendar/api.go      Google Calendar API wrapper
 │   ├── gmail/api.go         Gmail API wrapper
-│   ├── auth/                OAuth2 PKCE (browser login)
+│   ├── auth/                OAuth2 PKCE (browser login) + baked-in client ID
 │   └── config/              Token storage
 └── .github/workflows/
-    └── release.yml          CI: build + npm publish (OIDC)
+    └── release.yml          CI: build + bake OAuth client + npm publish (OIDC)
 ```
 
-Credentials are stored as a GitHub secret (GOOGLE_OAUTH_CREDENTIALS_JSON),
-NOT in the repository. install.js downloads them during npm postinstall.
+No secrets live in this repository. The OAuth client ID is baked into the
+release binary by CI (via `ldflags`, see `internal/auth/embedded.go`) from
+the `GOOGLE_OAUTH_CREDENTIALS_JSON` secret. `install.js` only installs the
+binary and wires the Pi MCP config — it downloads no credentials.
 
 ## Transparency & Security
 
@@ -145,13 +147,33 @@ Exchange), the industry standard for desktop applications:
 
 ### About the Client ID
 
-The package ships with a pre-registered Google Cloud OAuth client ID.
-This is **not a secret** — it's the same mechanism used by every app
-that offers "Sign in with Google" (Todoist, Notion, Fantastical, etc.).
+The release binary ships with a pre-registered Google Cloud OAuth client ID
+baked in at build time by CI. This is **not a secret** — it's the same
+mechanism used by every app that offers "Sign in with Google" (Todoist,
+Notion, Fantastical, `gcalcli`, `rclone`, `gh`, etc.).
 
 The client ID is publicly visible in the authorization URL and only
 serves to identify which app is requesting access. The actual security
 is in the OAuth consent screen where **you** decide what to share.
+
+Why shared instead of "create your own project"? Registering a Google Cloud
+project means enabling 5 APIs, configuring the consent screen, and creating
+a Desktop OAuth client — ~10 minutes of friction before the first login.
+The shared client removes that entirely: install, `setup`, authorize, done.
+No Google Cloud account, no billing, no JSON files to juggle.
+
+Prefer your own project? Set `GOOGLE_OAUTH_CREDENTIALS` to the path of your
+`credentials.json` (or place it at `~/.config/pi-google-services/`). Your
+own credentials always take precedence over the baked-in client.
+
+Known limits of the shared client (by design, not bugs):
+
+- The app is **unverified**, so Google shows a one-time warning screen.
+  Click **"Continue"** to authorize.
+- Unverified apps are capped at **100 users** total.
+- API quota is shared across all users of the client.
+- If Google ever suspends the project, auth breaks for everyone at once —
+  with your own client ID that risk is yours alone.
 
 ### Why Google Shows "This app is not verified"
 
@@ -175,7 +197,7 @@ unverified. This does not affect security.
 
 | What | Where |
 |------|-------|
-| OAuth client ID | Embedded in the binary (public by design) |
+| OAuth client ID | Baked into the release binary by CI (public by design); overridable via `GOOGLE_OAUTH_CREDENTIALS` or local `credentials.json` |
 | Access/Refresh tokens | `~/.config/pi-google-services/tokens.json` (0600 permissions) |
 | No data leaves your machine | All Google API calls are direct from your binary |
 
@@ -207,6 +229,12 @@ go build -o pi-google-services .
 ./pi-google-services serve
 ```
 
+Local builds without `credentials.json` in the repo root (and without the
+release `ldflags`) require your own client: set `GOOGLE_OAUTH_CREDENTIALS`
+to your `credentials.json` path. Release CI bakes the shared public client
+in via `-X github.com/sombi/pi-google-services/internal/auth.embeddedClientID=...`
+so end users never touch this.
+
 ## Tests
 
 ```bash
@@ -217,4 +245,4 @@ go test ./... -v
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

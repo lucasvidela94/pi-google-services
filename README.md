@@ -96,6 +96,39 @@ Each attachment can reference a local file or a Google Drive file:
 
 Pass `"withMeet": true` to `create-event` to auto-generate a Google Meet link.
 
+### Forms (5)
+
+| Tool | Description |
+|------|-------------|
+| `create-form` | Create empty form (then add sections/questions) |
+| `add-form-section` | Add section header (title + description) |
+| `add-form-question` | Add free-text or choice (RADIO/CHECKBOX/DROP_DOWN) question |
+| `get-form` | Show form structure + responder link |
+| `list-responses` | List submitted responses |
+
+The Forms API creates/reads forms and reads responses — it cannot submit
+responses as a user. Adding Forms introduced new OAuth scopes (`forms.body`,
+`forms.responses.readonly`): re-run `pi-google-services login` after updating.
+
+### Docs (3)
+
+| Tool | Description |
+|------|-------------|
+| `get-doc` | Read Doc as plain text (paragraphs + tables) |
+| `create-doc` | Create empty Doc |
+| `append-to-doc` | Append text at end of Doc |
+
+Scope: `documents`. Re-login required after updating.
+
+### Sheets (2, read-only)
+
+| Tool | Description |
+|------|-------------|
+| `list-sheets` | List tab names |
+| `read-sheet` | Read values (A1 notation, default `A1:Z100`) |
+
+Scope: `spreadsheets.readonly`. Write access deliberately excluded. Re-login required after updating.
+
 ## Architecture
 
 ```
@@ -108,7 +141,13 @@ pi-google-services/          npm package (pi-package)
 │   ├── mcp/                 MCP protocol (JSON-RPC 2.0 / stdio)
 │   ├── services/            Service interface + tool implementations
 │   │   ├── calendar.go      7 tools
-│   │   └── gmail.go         5 tools
+│   │   ├── gmail.go         5 tools
+│   │   ├── tasks.go         5 tools
+│   │   ├── drive.go         6 tools
+│   │   ├── contacts.go      3 tools
+│   │   ├── forms.go         5 tools
+│   │   ├── docs.go          3 tools
+│   │   └── sheets.go        2 tools
 │   ├── calendar/api.go      Google Calendar API wrapper
 │   ├── gmail/api.go         Gmail API wrapper
 │   ├── auth/                OAuth2 PKCE (browser login) + baked-in client ID
@@ -139,7 +178,7 @@ Exchange), the industry standard for desktop applications:
 1. You run `login` or `setup`
 2. Your browser opens to Google's consent screen
 3. You see exactly what permissions are being requested (calendar,
-   email, tasks, drive, contacts)
+   email, tasks, drive, contacts, forms, docs, sheets)
 4. You authorize with your Google account
 5. A token is saved **locally** on your machine (`~/.config/pi-google-services/`)
 6. The token never leaves your machine — all API calls go directly
@@ -240,8 +279,6 @@ so end users never touch this.
 ```bash
 go test ./... -v
 ```
-
-26 unit tests (MCP protocol, config, service metadata, services, MIME multipart attachments).
 
 ## License
 

@@ -19,14 +19,17 @@ import (
 	"github.com/sombi/pi-google-services/internal/calendar"
 	"github.com/sombi/pi-google-services/internal/config"
 	"github.com/sombi/pi-google-services/internal/contacts"
+	"github.com/sombi/pi-google-services/internal/docs"
 	"github.com/sombi/pi-google-services/internal/drive"
+	"github.com/sombi/pi-google-services/internal/forms"
 	"github.com/sombi/pi-google-services/internal/gmail"
 	"github.com/sombi/pi-google-services/internal/mcp"
 	"github.com/sombi/pi-google-services/internal/services"
+	"github.com/sombi/pi-google-services/internal/sheets"
 	"github.com/sombi/pi-google-services/internal/tasks"
 )
 
-const version = "0.1.22"
+const version = "0.1.24"
 
 func main() {
 	log.SetFlags(0)
@@ -110,6 +113,9 @@ func registeredServices() []services.Service {
 		services.NewTasks(nil),
 		services.NewDrive(nil),
 		services.NewContacts(nil),
+		services.NewForms(nil),
+		services.NewDocs(nil),
+		services.NewSheets(nil),
 	}
 }
 
@@ -250,6 +256,21 @@ func cmdServe() {
 		log.Fatalf("Contacts: %v", err)
 	}
 
+	formsSvc, err := forms.New(ctx, ts)
+	if err != nil {
+		log.Fatalf("Forms: %v", err)
+	}
+
+	docsSvc, err := docs.New(ctx, ts)
+	if err != nil {
+		log.Fatalf("Docs: %v", err)
+	}
+
+	sheetsSvc, err := sheets.New(ctx, ts)
+	if err != nil {
+		log.Fatalf("Sheets: %v", err)
+	}
+
 	// Build MCP server with registered services
 	server := mcp.New()
 	registerServiceTools(server, services.NewCalendar(calSvc))
@@ -257,6 +278,9 @@ func cmdServe() {
 	registerServiceTools(server, services.NewTasks(tasksSvc))
 	registerServiceTools(server, services.NewDrive(driveSvc))
 	registerServiceTools(server, services.NewContacts(contactsSvc))
+	registerServiceTools(server, services.NewForms(formsSvc))
+	registerServiceTools(server, services.NewDocs(docsSvc))
+	registerServiceTools(server, services.NewSheets(sheetsSvc))
 
 	log.Println("✅ Google Services MCP server iniciado (stdio)")
 	log.Printf("   Tools registradas: %d\n", len(server.Tools()))

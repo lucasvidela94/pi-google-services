@@ -205,6 +205,9 @@ func TestServiceToolsCount(t *testing.T) {
 	tasksLen := len((&TasksService{}).Tools())
 	driveLen := len((&DriveService{}).Tools())
 	contactsLen := len((&ContactsService{}).Tools())
+	formsLen := len((&FormsService{}).Tools())
+	docsLen := len((&DocsService{}).Tools())
+	sheetsLen := len((&SheetsService{}).Tools())
 
 	if calLen != 7 {
 		t.Errorf("Calendar: expected 7, got %d", calLen)
@@ -221,9 +224,18 @@ func TestServiceToolsCount(t *testing.T) {
 	if contactsLen != 3 {
 		t.Errorf("Contacts: expected 3, got %d", contactsLen)
 	}
-	total := calLen + gmailLen + tasksLen + driveLen + contactsLen
-	if total != 26 {
-		t.Errorf("Total tools: expected 26 (7+5+5+6+3), got %d", total)
+	if formsLen != 5 {
+		t.Errorf("Forms: expected 5, got %d", formsLen)
+	}
+	if docsLen != 3 {
+		t.Errorf("Docs: expected 3, got %d", docsLen)
+	}
+	if sheetsLen != 2 {
+		t.Errorf("Sheets: expected 2, got %d", sheetsLen)
+	}
+	total := calLen + gmailLen + tasksLen + driveLen + contactsLen + formsLen + docsLen + sheetsLen
+	if total != 36 {
+		t.Errorf("Total tools: expected 36 (7+5+5+6+3+5+3+2), got %d", total)
 	}
 }
 

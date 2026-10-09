@@ -1,5 +1,5 @@
 ---
-description: "Gmail, Calendar, Tasks, Drive & Contacts MCP tools for Pi (OAuth, single binary)"
+description: "Gmail, Calendar, Tasks, Drive, Contacts, Forms, Docs & Sheets MCP tools for Pi (OAuth, single binary)"
 ---
 
 # pi-google-services
@@ -222,3 +222,99 @@ Examples:
 Arguments:
 - `taskId` (required) — task to delete
 - `taskListId` — target list (default: @default)
+
+## Forms tools
+
+> Requires re-authorization after updating (`pi-google-services login`), since
+> Forms adds new OAuth scopes. The Forms API creates/reads forms and reads
+> responses — it cannot submit responses as a user.
+
+### `create-form`
+Create an empty form, then add sections/questions.
+
+Examples:
+- "creá un formulario 'Cuestionario de política de la clínica'"
+
+Arguments:
+- `title` (required) — form title
+- `description` — form description
+
+### `add-form-section`
+Add a section header (title + description, no question).
+
+Arguments:
+- `formId` (required) — form ID
+- `title` (required) — section title
+- `description` — section description
+
+### `add-form-question`
+Add a question. Without `options` it is free text; with `options`
+(comma-separated, e.g. `Sí,No`) it is a choice question.
+
+Arguments:
+- `formId` (required) — form ID
+- `title` (required) — question text
+- `description` — help text under the question
+- `paragraph` — long-text answer instead of short text (default: false)
+- `required` — whether an answer is required (default: false)
+- `options` — comma-separated choices (omit for free text)
+- `choiceType` — RADIO (default), CHECKBOX or DROP_DOWN
+
+### `get-form`
+Show a form's structure and responder link.
+
+Arguments:
+- `formId` (required) — form ID
+
+### `list-responses`
+List responses submitted to a form.
+
+Arguments:
+- `formId` (required) — form ID
+- `limit` — max responses (default: 100)
+
+## Docs tools
+
+> Requires re-authorization after updating (`pi-google-services login`), since
+> Docs adds a new OAuth scope.
+
+### `get-doc`
+Read a Google Doc as plain text (title + body, including tables).
+
+Examples:
+- "leé este doc y resumilo"
+- "qué dice el documento de la reunión?"
+
+Arguments:
+- `docId` (required) — document ID (from Drive URL or `search-drive`)
+
+### `create-doc`
+Create an empty Google Doc.
+
+Arguments:
+- `title` (required) — document title
+
+### `append-to-doc`
+Append text at the end of a Google Doc (newlines create new paragraphs).
+
+Arguments:
+- `docId` (required) — document ID
+- `text` (required) — text to append
+
+## Sheets tools (read-only)
+
+> Requires re-authorization after updating (`pi-google-services login`), since
+> Sheets adds a new OAuth scope. Write access is intentionally excluded.
+
+### `list-sheets`
+List tab names of a spreadsheet.
+
+Arguments:
+- `spreadsheetId` (required) — spreadsheet ID (from Drive URL or `search-drive`)
+
+### `read-sheet`
+Read cell values from a spreadsheet range.
+
+Arguments:
+- `spreadsheetId` (required) — spreadsheet ID
+- `range` — A1 notation (e.g. `A1:C10`, `'Hoja 1'!A1:B5`). Default: `A1:Z100` on the first tab

@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.1.24
+
+- **Feature: Google Docs (3 tools)** — `get-doc` (plain-text extraction, paragraphs + tables), `create-doc`, `append-to-doc` (via `EndOfSegmentLocation`, no index arithmetic). Scope: `documents`. Re-login required.
+- **Feature: Google Sheets read-only (2 tools)** — `list-sheets` (tab names), `read-sheet` (A1 notation, default `A1:Z100`). Scope: `spreadsheets.readonly`. Re-login required. Write access deliberately excluded (YAGNI until a real case needs it).
+- **Fix (bug destructivo): la suite ya no pisa el `tokens.json` real** — los 4 tests de login en `internal/auth` usaban `defer withTempConfigDir(t)`, que instala el override del config dir *al retornar* el test, no durante: cada `go test ./...` sobrescribía el token real del usuario con fakes y obligaba a re-login. `withTempConfigDir` ahora devuelve cleanup (`defer withTempConfigDir(t)()`) y se verificó con token canario que la suite no toca el config real.
+
+## v0.1.23
+
+- **Feature: Google Forms (5 tools)** — `create-form`, `add-form-section`, `add-form-question` (texto libre o choice RADIO/CHECKBOX/DROP_DOWN vía `options`), `get-form`, `list-responses`. Sigue el mismo patrón que los demás servicios (`internal/forms/api.go` + `internal/services/forms.go`, builders puros `NewSectionItem`/`NewTextQuestion`/`NewChoiceQuestion` testeados sin red). Scopes nuevos: `forms.body` + `forms.responses.readonly` — hay que re-autorizar (`login` de nuevo). Nota: la API de Forms crea/lee formularios y lee respuestas; no existe endpoint para *enviar* respuestas como usuario.
+- **Tests: 31 tools across 6 services** — `TestServiceToolsCount` actualizado (7+5+5+6+3+5) + `forms_test.go` (scopes, tools, validación de handlers, builders).
+
 ## v0.1.22
 
 - **Security/trust: OAuth client baked into the binary, nothing downloaded at install** — `install.js` no longer ships or copies `credentials.json` (that postinstall copy is what scanners and reviewers flag). Release CI now bakes the public desktop client ID into the binary via `ldflags` (`internal/auth/embedded.go`) from the same `GOOGLE_OAUTH_CREDENTIALS_JSON` secret. End-user flow is unchanged: install, `setup`, authorize. Own-project override still wins via `GOOGLE_OAUTH_CREDENTIALS` or local `credentials.json`.

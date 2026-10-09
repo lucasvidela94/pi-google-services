@@ -192,19 +192,26 @@ func newTestAuthenticator(t *testing.T, tokenJSON string) (*Authenticator, *http
 	return a, ts
 }
 
-func withTempConfigDir(t *testing.T) string {
+// withTempConfigDir points config.Dir at a temp dir for the duration of the
+// test and returns a cleanup restoring the original. Use as:
+//
+//	defer withTempConfigDir(t)()
+//
+// (Calling it WITHOUT the trailing () — or via bare `defer f(t)` —
+// installs the override too late, and fake login tokens would overwrite
+// the user's real tokens.json. See issue: suite clobbered real tokens.)
+func withTempConfigDir(t *testing.T) func() {
 	t.Helper()
 	dir := t.TempDir()
 	old := config.Dir
 	config.Dir = func() (string, error) { return dir, nil }
-	t.Cleanup(func() { config.Dir = old })
-	return dir
+	return func() { config.Dir = old }
 }
 
 const fakeTokenJSON = `{"access_token":"fake-at","refresh_token":"fake-rt","token_type":"Bearer","expires_in":3600}`
 
 func TestLoginManualMode(t *testing.T) {
-	defer withTempConfigDir(t)
+	defer withTempConfigDir(t)()
 	a, _ := newTestAuthenticator(t, fakeTokenJSON)
 
 	var out strings.Builder
@@ -227,7 +234,7 @@ func TestLoginManualMode(t *testing.T) {
 }
 
 func TestLoginBrowserFailureFallsBackToManual(t *testing.T) {
-	defer withTempConfigDir(t)
+	defer withTempConfigDir(t)()
 	a, _ := newTestAuthenticator(t, fakeTokenJSON)
 
 	var out strings.Builder
@@ -250,7 +257,7 @@ func TestLoginBrowserFailureFallsBackToManual(t *testing.T) {
 }
 
 func TestLoginBrowserFlowEndToEnd(t *testing.T) {
-	defer withTempConfigDir(t)
+	defer withTempConfigDir(t)()
 	a, _ := newTestAuthenticator(t, fakeTokenJSON)
 
 	// Simulate Google: capture the auth URL from the browser stub, resolve
@@ -288,7 +295,7 @@ func TestLoginBrowserFlowEndToEnd(t *testing.T) {
 }
 
 func TestLoginManualModeUsesRealLoopbackPort(t *testing.T) {
-	defer withTempConfigDir(t)
+	defer withTempConfigDir(t)()
 	a, _ := newTestAuthenticator(t, fakeTokenJSON)
 
 	var out strings.Builder

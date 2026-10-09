@@ -440,6 +440,14 @@ func downloadUpdate(ctx context.Context, version string) error {
 }
 
 func decompressGzip(data []byte, path string, mode os.FileMode) error {
+	return decompressGzipLimited(data, path, mode, maxDecompressedBytes)
+}
+
+// Cap de seguridad: el binario real pesa ~19MB; si el gzip expande
+// más allá del límite el asset no es el esperado y se aborta.
+const maxDecompressedBytes = 64 << 20
+
+func decompressGzipLimited(data []byte, path string, mode os.FileMode, limit int64) error {
 	// Decompress gzip data and write to file
 	gr, err := gzip.NewReader(bytes.NewReader(data))
 	if err != nil {
@@ -453,10 +461,16 @@ func decompressGzip(data []byte, path string, mode os.FileMode) error {
 	}
 	defer out.Close()
 
-	// Cap de seguridad: el binario real pesa ~10MB; si el gzip expande
-	// más allá de 64MB el asset no es el esperado y se aborta.
-	if _, err := io.Copy(out, io.LimitReader(gr, 64<<20)); err != nil {
+	// Ojo: io.Copy contra un LimitReader agotado NO devuelve error,
+	// trunca en silencio. Por eso se pide limit+1 y se compara n:
+	// n > limit significa que el stream sigue y el asset se aborta.
+	n, err := io.Copy(out, io.LimitReader(gr, limit+1))
+	if err != nil {
 		return fmt.Errorf("decompress: %w", err)
+	}
+	if n > limit {
+		_ = os.Remove(path)
+		return fmt.Errorf("decompress: %d bytes exceden el límite de %d: asset inesperado, se aborta", n, limit)
 	}
 	return nil
 }

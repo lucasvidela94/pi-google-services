@@ -53,6 +53,7 @@ func (s *Service) ListEvents(ctx context.Context, calendarID string, timeMin, ti
 		MaxResults(maxResults).
 		OrderBy("startTime").
 		SingleEvents(true).
+		Context(ctx).
 		Do()
 	if err != nil {
 		return nil, fmt.Errorf("list events: %w", err)
@@ -101,7 +102,7 @@ func (s *Service) CreateEvent(ctx context.Context, calendarID string, event *gca
 			},
 		}
 	}
-	created, err := call.Do()
+	created, err := call.Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("create event: %w", err)
 	}
@@ -113,7 +114,7 @@ func (s *Service) UpdateEvent(ctx context.Context, calendarID, eventID string, e
 	if calendarID == "" {
 		calendarID = "primary"
 	}
-	updated, err := s.svc.Events.Update(calendarID, eventID, event).Do()
+	updated, err := s.svc.Events.Update(calendarID, eventID, event).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("update event: %w", err)
 	}
@@ -125,7 +126,10 @@ func (s *Service) DeleteEvent(ctx context.Context, calendarID, eventID string) e
 	if calendarID == "" {
 		calendarID = "primary"
 	}
-	return s.svc.Events.Delete(calendarID, eventID).Do()
+	if err := s.svc.Events.Delete(calendarID, eventID).Context(ctx).Do(); err != nil {
+		return fmt.Errorf("delete event: %w", err)
+	}
+	return nil
 }
 
 // SearchEvents queries events by text.
@@ -138,6 +142,7 @@ func (s *Service) SearchEvents(ctx context.Context, query string, maxResults int
 		MaxResults(maxResults).
 		OrderBy("startTime").
 		SingleEvents(true).
+		Context(ctx).
 		Do()
 	if err != nil {
 		return nil, fmt.Errorf("search events: %w", err)
@@ -156,7 +161,7 @@ func (s *Service) SearchEvents(ctx context.Context, query string, maxResults int
 
 // ListCalendars returns all calendars.
 func (s *Service) ListCalendars(ctx context.Context) ([]*gcal.CalendarListEntry, error) {
-	calList, err := s.svc.CalendarList.List().Do()
+	calList, err := s.svc.CalendarList.List().Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("list calendars: %w", err)
 	}
@@ -176,7 +181,7 @@ func (s *Service) GetFreeBusy(ctx context.Context, calendarIDs []string, timeMin
 	for i, id := range calendarIDs {
 		req.Items[i] = &gcal.FreeBusyRequestItem{Id: id}
 	}
-	resp, err := s.svc.Freebusy.Query(req).Do()
+	resp, err := s.svc.Freebusy.Query(req).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("freebusy: %w", err)
 	}
@@ -200,9 +205,9 @@ func fmtDateTime(dt *gcal.EventDateTime) string {
 	return ""
 }
 
-func truncate(s string, max int) string {
-	if len(s) <= max {
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
 		return s
 	}
-	return s[:max] + "..."
+	return s[:maxLen] + "..."
 }

@@ -46,14 +46,23 @@ func (b *gmailAPIBackend) listMessages(ctx context.Context, query string, maxRes
 	if pageToken != "" {
 		call.PageToken(pageToken)
 	}
-	return call.Do()
+	msgs, err := call.Context(ctx).Do()
+	if err != nil {
+		return nil, fmt.Errorf("list messages: %w", err)
+	}
+	return msgs, nil
 }
 
 func (b *gmailAPIBackend) getMessageMetadata(ctx context.Context, id string) (*gmail.Message, error) {
-	return b.svc.Messages.Get("me", id).
+	msg, err := b.svc.Messages.Get("me", id).
 		Format("metadata").
 		MetadataHeaders("Subject", "From", "Date").
+		Context(ctx).
 		Do()
+	if err != nil {
+		return nil, fmt.Errorf("get message metadata: %w", err)
+	}
+	return msg, nil
 }
 
 // EmailSummary is a lightweight email representation.
@@ -101,7 +110,7 @@ func (s *Service) ListInbox(ctx context.Context, maxResults int64, query, pageTo
 
 // GetEmail retrieves the full content of a message by ID.
 func (s *Service) GetEmail(ctx context.Context, id string) (*EmailDetail, error) {
-	msg, err := s.svc.Messages.Get("me", id).Format("full").Do()
+	msg, err := s.svc.Messages.Get("me", id).Format("full").Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("get message: %w", err)
 	}
@@ -146,7 +155,7 @@ type Attachment struct {
 // SendEmail sends a new email with optional attachments.
 func (s *Service) SendEmail(ctx context.Context, to, subject, body string, attachments []Attachment) (*gmail.Message, error) {
 	msg := createMessage(to, subject, body, attachments)
-	sent, err := s.svc.Messages.Send("me", msg).Do()
+	sent, err := s.svc.Messages.Send("me", msg).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("send message: %w", err)
 	}

@@ -253,12 +253,12 @@ func (s *FormsService) handleListResponses(ctx context.Context, params json.RawM
 		b.WriteString("No responses yet.")
 	} else {
 		for i, r := range responses {
-			b.WriteString(fmt.Sprintf("%d. 📝 %s", i+1, r.ResponseID))
+			fmt.Fprintf(&b, "%d. 📝 %s", i+1, r.ResponseID)
 			if r.Responder != "" {
-				b.WriteString(fmt.Sprintf(" — %s", r.Responder))
+				fmt.Fprintf(&b, " — %s", r.Responder)
 			}
 			if r.Submitted != "" {
-				b.WriteString(fmt.Sprintf(" (%s)", r.Submitted))
+				fmt.Fprintf(&b, " (%s)", r.Submitted)
 			}
 			b.WriteString("\n")
 		}
@@ -273,10 +273,10 @@ func formatForm(f *forms.Form) string {
 	if f.Info != nil && f.Info.Title != "" {
 		title = f.Info.Title
 	}
-	b.WriteString(fmt.Sprintf("📋 %s\n", title))
-	b.WriteString(fmt.Sprintf("   ID: %s\n", f.FormId))
+	fmt.Fprintf(&b, "📋 %s\n", title)
+	fmt.Fprintf(&b, "   ID: %s\n", f.FormId)
 	if f.ResponderUri != "" {
-		b.WriteString(fmt.Sprintf("   🔗 %s\n", f.ResponderUri))
+		fmt.Fprintf(&b, "   🔗 %s\n", f.ResponderUri)
 	}
 	if len(f.Items) == 0 {
 		b.WriteString("No items yet.")
@@ -301,7 +301,7 @@ func formatForm(f *forms.Form) string {
 			kind = "📌"
 			detail = " (section)"
 		}
-		b.WriteString(fmt.Sprintf("%d. %s %s%s\n", i+1, kind, item.Title, detail))
+		fmt.Fprintf(&b, "%d. %s %s%s\n", i+1, kind, item.Title, detail)
 	}
 	return b.String()
 }

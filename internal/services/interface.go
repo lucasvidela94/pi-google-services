@@ -25,10 +25,3 @@ type Service interface {
 	// Handle dispatches a tool call to the appropriate handler.
 	Handle(ctx context.Context, toolName string, params json.RawMessage) (interface{}, *mcp.RPCError)
 }
-
-// BaseService provides common fields for service implementations.
-type BaseService struct {
-	name   string
-	scopes []string
-	tools  []mcp.ToolDefinition
-}

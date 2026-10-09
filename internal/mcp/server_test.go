@@ -41,7 +41,9 @@ func TestInitHandshake(t *testing.T) {
 	s.SetOutput(&buf)
 
 	in := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"1.0"}}}` + "\n")
-	s.Run(context.Background(), in)
+	if err := s.Run(context.Background(), in); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
 
 	var resp struct {
 		JSONRPC string `json:"jsonrpc"`
@@ -71,7 +73,9 @@ func TestToolsList(t *testing.T) {
 	s.SetOutput(&buf)
 
 	in := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/list"}` + "\n")
-	s.Run(context.Background(), in)
+	if err := s.Run(context.Background(), in); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
 
 	var resp struct {
 		Result struct {
@@ -91,7 +95,7 @@ func TestToolsList(t *testing.T) {
 
 func TestToolCall(t *testing.T) {
 	s := New()
-	s.RegisterTool("echo", ToolDefinition{Name: "echo"}, func(ctx context.Context, params json.RawMessage) (interface{}, *RPCError) {
+	s.RegisterTool("echo", ToolDefinition{Name: "echo"}, func(_ context.Context, _ json.RawMessage) (interface{}, *RPCError) {
 		return map[string]interface{}{
 			"content": []map[string]interface{}{{"type": "text", "text": "pong"}},
 		}, nil
@@ -101,7 +105,9 @@ func TestToolCall(t *testing.T) {
 	s.SetOutput(&buf)
 
 	in := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"echo","arguments":{}}}` + "\n")
-	s.Run(context.Background(), in)
+	if err := s.Run(context.Background(), in); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
 
 	var resp struct {
 		Result struct {
@@ -120,7 +126,7 @@ func TestToolCall(t *testing.T) {
 
 func TestToolCallError(t *testing.T) {
 	s := New()
-	s.RegisterTool("fail", ToolDefinition{Name: "fail"}, func(ctx context.Context, params json.RawMessage) (interface{}, *RPCError) {
+	s.RegisterTool("fail", ToolDefinition{Name: "fail"}, func(_ context.Context, _ json.RawMessage) (interface{}, *RPCError) {
 		return nil, &RPCError{Code: -32000, Message: "boom"}
 	})
 
@@ -128,12 +134,16 @@ func TestToolCallError(t *testing.T) {
 	s.SetOutput(&buf)
 
 	in := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"fail","arguments":{}}}` + "\n")
-	s.Run(context.Background(), in)
+	if err := s.Run(context.Background(), in); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
 
 	var resp struct {
 		Error *RPCError `json:"error"`
 	}
-	json.Unmarshal(buf.Bytes(), &resp)
+	if err := json.Unmarshal(buf.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v\nraw: %s", err, buf.String())
+	}
 	if resp.Error == nil || resp.Error.Code != -32000 || resp.Error.Message != "boom" {
 		t.Errorf("error = %+v, want code=-32000 msg=boom", resp.Error)
 	}
@@ -145,12 +155,16 @@ func TestUnknownMethod(t *testing.T) {
 	s.SetOutput(&buf)
 
 	in := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"nope"}` + "\n")
-	s.Run(context.Background(), in)
+	if err := s.Run(context.Background(), in); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
 
 	var resp struct {
 		Error *RPCError `json:"error"`
 	}
-	json.Unmarshal(buf.Bytes(), &resp)
+	if err := json.Unmarshal(buf.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v\nraw: %s", err, buf.String())
+	}
 	if resp.Error == nil || resp.Error.Code != -32601 {
 		t.Errorf("error = %+v, want code -32601", resp.Error)
 	}
@@ -162,12 +176,16 @@ func TestUnknownTool(t *testing.T) {
 	s.SetOutput(&buf)
 
 	in := strings.NewReader(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"ghost","arguments":{}}}` + "\n")
-	s.Run(context.Background(), in)
+	if err := s.Run(context.Background(), in); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
 
 	var resp struct {
 		Error *RPCError `json:"error"`
 	}
-	json.Unmarshal(buf.Bytes(), &resp)
+	if err := json.Unmarshal(buf.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal: %v\nraw: %s", err, buf.String())
+	}
 	if resp.Error == nil || resp.Error.Code != -32601 {
 		t.Errorf("error = %+v, want code -32601", resp.Error)
 	}
@@ -175,7 +193,7 @@ func TestUnknownTool(t *testing.T) {
 
 func TestMultipleCalls(t *testing.T) {
 	s := New()
-	s.RegisterTool("ping", ToolDefinition{Name: "ping"}, func(ctx context.Context, params json.RawMessage) (interface{}, *RPCError) {
+	s.RegisterTool("ping", ToolDefinition{Name: "ping"}, func(_ context.Context, _ json.RawMessage) (interface{}, *RPCError) {
 		return map[string]interface{}{"content": []map[string]interface{}{{"type": "text", "text": "pong"}}}, nil
 	})
 
@@ -186,7 +204,9 @@ func TestMultipleCalls(t *testing.T) {
 {"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"ping","arguments":{}}}
 {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"ping","arguments":{}}}
 `)
-	s.Run(context.Background(), in)
+	if err := s.Run(context.Background(), in); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
 
 	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
 	if len(lines) != 3 {

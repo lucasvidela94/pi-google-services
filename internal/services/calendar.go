@@ -310,13 +310,13 @@ func (s *CalendarService) handleListCalendars(ctx context.Context, _ json.RawMes
 	}
 	var b strings.Builder
 	for _, cal := range calendars {
-		b.WriteString(fmt.Sprintf("📅 %s", cal.Summary))
+		fmt.Fprintf(&b, "📅 %s", cal.Summary)
 		if cal.Primary {
 			b.WriteString(" (primary)")
 		}
-		b.WriteString(fmt.Sprintf("\n  ID: %s\n", cal.Id))
+		fmt.Fprintf(&b, "\n  ID: %s\n", cal.Id)
 		if cal.Description != "" {
-			b.WriteString(fmt.Sprintf("  %s\n", cal.Description))
+			fmt.Fprintf(&b, "  %s\n", cal.Description)
 		}
 	}
 	return contentResponse(b.String()), nil
@@ -360,12 +360,12 @@ func (s *CalendarService) handleFreeBusy(ctx context.Context, params json.RawMes
 
 	var b strings.Builder
 	for id, cal := range calendars {
-		b.WriteString(fmt.Sprintf("📅 %s\n", id))
+		fmt.Fprintf(&b, "📅 %s\n", id)
 		if len(cal.Busy) == 0 {
 			b.WriteString("  ✅ Free all day\n")
 		} else {
 			for _, busy := range cal.Busy {
-				b.WriteString(fmt.Sprintf("  ❌ Busy: %s → %s\n", busy.Start, busy.End))
+				fmt.Fprintf(&b, "  ❌ Busy: %s → %s\n", busy.Start, busy.End)
 			}
 		}
 	}
@@ -388,13 +388,13 @@ func formatEvents(events []*calendar.EventSummary) string {
 	}
 	var b strings.Builder
 	for i, e := range events {
-		b.WriteString(fmt.Sprintf("%d. %s\n   📅 %s → %s", i+1, e.Summary, e.Start, e.End))
+		fmt.Fprintf(&b, "%d. %s\n   📅 %s → %s", i+1, e.Summary, e.Start, e.End)
 		if e.Description != "" {
 			desc := strings.ReplaceAll(e.Description, "\n", "\n   ")
-			b.WriteString(fmt.Sprintf("\n   📝 %s", desc))
+			fmt.Fprintf(&b, "\n   📝 %s", desc)
 		}
 		if e.Location != "" {
-			b.WriteString(fmt.Sprintf("\n   📍 %s", e.Location))
+			fmt.Fprintf(&b, "\n   📍 %s", e.Location)
 		}
 		b.WriteString("\n")
 	}

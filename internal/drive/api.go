@@ -12,6 +12,7 @@ import (
 
 	"golang.org/x/oauth2"
 	"google.golang.org/api/drive/v3"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/option"
 )
 
@@ -47,7 +48,7 @@ func (s *Service) ListFiles(ctx context.Context, folderID, query string, pageSiz
 		pageSize = 50
 	}
 
-	q := fmt.Sprintf("trashed=false")
+	q := "trashed=false"
 	if folderID != "" {
 		q += fmt.Sprintf(" and '%s' in parents", folderID)
 	} else {
@@ -62,6 +63,7 @@ func (s *Service) ListFiles(ctx context.Context, folderID, query string, pageSiz
 		PageSize(pageSize).
 		Fields("files(id,name,mimeType,size,createdTime,modifiedTime,parents,webViewLink)").
 		OrderBy("modifiedTime desc").
+		Context(ctx).
 		Do()
 	if err != nil {
 		return nil, fmt.Errorf("list files: %w", err)
@@ -98,6 +100,7 @@ func (s *Service) SearchDrive(ctx context.Context, query string, pageSize int64)
 		PageSize(pageSize).
 		Fields("files(id,name,mimeType,size,createdTime,modifiedTime,webViewLink)").
 		OrderBy("modifiedTime desc").
+		Context(ctx).
 		Do()
 	if err != nil {
 		return nil, fmt.Errorf("search drive: %w", err)
@@ -122,6 +125,7 @@ func (s *Service) SearchDrive(ctx context.Context, query string, pageSize int64)
 func (s *Service) GetFile(ctx context.Context, fileID string) (*FileSummary, error) {
 	f, err := s.svc.Files.Get(fileID).
 		Fields("id,name,mimeType,size,createdTime,modifiedTime,parents,webViewLink,description").
+		Context(ctx).
 		Do()
 	if err != nil {
 		return nil, fmt.Errorf("get file: %w", err)
@@ -162,8 +166,9 @@ func (s *Service) UploadFile(ctx context.Context, localPath, parentFolderID, mim
 	}
 
 	created, err := s.svc.Files.Create(driveFile).
-		Media(f).
+		Media(f, googleapi.ContentType(mimeType)).
 		Fields("id,name,mimeType,size,createdTime,webViewLink").
+		Context(ctx).
 		Do()
 	if err != nil {
 		return nil, fmt.Errorf("upload file: %w", err)
@@ -181,14 +186,14 @@ func (s *Service) UploadFile(ctx context.Context, localPath, parentFolderID, mim
 
 // DownloadFile downloads a file from Drive and saves it locally.
 func (s *Service) DownloadFile(ctx context.Context, fileID, destPath string) error {
-	resp, err := s.svc.Files.Get(fileID).Download()
+	resp, err := s.svc.Files.Get(fileID).Context(ctx).Download()
 	if err != nil {
 		return fmt.Errorf("download get: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// Create parent dirs
-	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(destPath), 0750); err != nil {
 		return fmt.Errorf("mkdir: %w", err)
 	}
 
@@ -219,12 +224,13 @@ type FileContent struct {
 func (s *Service) DownloadContent(ctx context.Context, fileID string) (*FileContent, error) {
 	info, err := s.svc.Files.Get(fileID).
 		Fields("id,name,mimeType,size").
+		Context(ctx).
 		Do()
 	if err != nil {
 		return nil, fmt.Errorf("get file metadata: %w", err)
 	}
 
-	resp, err := s.svc.Files.Get(fileID).Download()
+	resp, err := s.svc.Files.Get(fileID).Context(ctx).Download()
 	if err != nil {
 		return nil, fmt.Errorf("download file: %w", err)
 	}
@@ -254,6 +260,7 @@ func (s *Service) CreateFolder(ctx context.Context, name, parentFolderID string)
 
 	created, err := s.svc.Files.Create(folder).
 		Fields("id,name,mimeType,createdTime,webViewLink").
+		Context(ctx).
 		Do()
 	if err != nil {
 		return nil, fmt.Errorf("create folder: %w", err)
@@ -270,7 +277,10 @@ func (s *Service) CreateFolder(ctx context.Context, name, parentFolderID string)
 
 // DeleteFile moves a file to trash.
 func (s *Service) DeleteFile(ctx context.Context, fileID string) error {
-	return s.svc.Files.Delete(fileID).Do()
+	if err := s.svc.Files.Delete(fileID).Context(ctx).Do(); err != nil {
+		return fmt.Errorf("delete file: %w", err)
+	}
+	return nil
 }
 
 func fmtTime(t string) string {

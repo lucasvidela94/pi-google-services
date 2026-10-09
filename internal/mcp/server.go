@@ -128,7 +128,10 @@ func (s *Server) Run(ctx context.Context, r ...io.Reader) error {
 		}
 		s.handleMessage(ctx, &req)
 	}
-	return scanner.Err()
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("read stdio: %w", err)
+	}
+	return nil
 }
 
 func (s *Server) handleMessage(ctx context.Context, req *Request) {

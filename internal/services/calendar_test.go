@@ -5,37 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 	"time"
-
-	"github.com/sombi/pi-google-services/internal/calendar"
 )
-
-// mockCalendarAPI implements calendar operations without real API calls.
-type mockCalendarAPI struct {
-	events []*calendar.EventSummary
-}
-
-func (m *mockCalendarAPI) ListEvents(ctx context.Context, calendarID string, timeMin, timeMax time.Time, maxResults int64) ([]*calendar.EventSummary, error) {
-	return m.events, nil
-}
-func (m *mockCalendarAPI) CreateEvent(ctx context.Context, calendarID string, event interface{}) (interface{}, error) {
-	return map[string]interface{}{
-		"id":       "mock-event-1",
-		"summary":  "test",
-		"htmlLink": "https://calendar.google.com/event?eid=mock",
-	}, nil
-}
-func (m *mockCalendarAPI) DeleteEvent(ctx context.Context, calendarID, eventID string) error {
-	return nil
-}
-func (m *mockCalendarAPI) SearchEvents(ctx context.Context, query string, maxResults int64) ([]*calendar.EventSummary, error) {
-	return m.events, nil
-}
-func (m *mockCalendarAPI) ListCalendars(ctx context.Context) ([]interface{}, error) {
-	return []interface{}{}, nil
-}
-func (m *mockCalendarAPI) GetFreeBusy(ctx context.Context, calendarIDs []string, timeMin, timeMax time.Time) (map[string]interface{}, error) {
-	return map[string]interface{}{}, nil
-}
 
 // We test the service layer by using its tool definitions and handler routing.
 func TestCalendarServiceName(t *testing.T) {
@@ -77,7 +47,7 @@ func TestCalendarServiceTools(t *testing.T) {
 
 func TestCalendarServiceHandle_UnknownTool(t *testing.T) {
 	cs := &CalendarService{}
-	_, err := cs.Handle(nil, "nonexistent", nil)
+	_, err := cs.Handle(context.TODO(), "nonexistent", nil)
 	if err == nil || err.Code != -32601 {
 		t.Errorf("expected -32601 error, got %+v", err)
 	}
@@ -121,7 +91,7 @@ func TestGmailServiceTools(t *testing.T) {
 
 func TestGmailServiceHandle_UnknownTool(t *testing.T) {
 	gs := &GmailService{}
-	_, err := gs.Handle(nil, "nonexistent", nil)
+	_, err := gs.Handle(context.TODO(), "nonexistent", nil)
 	if err == nil || err.Code != -32601 {
 		t.Errorf("expected -32601 error, got %+v", err)
 	}
@@ -193,7 +163,7 @@ func TestDriveServiceTools(t *testing.T) {
 
 func TestDriveServiceHandle_UnknownTool(t *testing.T) {
 	ds := &DriveService{}
-	_, err := ds.Handle(nil, "nonexistent", nil)
+	_, err := ds.Handle(context.TODO(), "nonexistent", nil)
 	if err == nil || err.Code != -32601 {
 		t.Errorf("expected -32601 error, got %+v", err)
 	}

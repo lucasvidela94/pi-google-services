@@ -176,11 +176,11 @@ func (o LoginOptions) output() io.Writer {
 	return os.Stdout
 }
 
-func (o LoginOptions) openBrowser() func(string) error {
+func (o LoginOptions) openBrowser(ctx context.Context) func(string) error {
 	if o.OpenBrowser != nil {
 		return o.OpenBrowser
 	}
-	return openBrowser
+	return func(url string) error { return openBrowser(ctx, url) }
 }
 
 // Login performs the PKCE OAuth flow with default options.
@@ -200,7 +200,7 @@ func (a *Authenticator) LoginWithOptions(ctx context.Context, opts LoginOptions)
 	// The callback server always runs: it allocates the real loopback port
 	// that goes into the authorization URL (port 0 is not a valid
 	// redirect), and catches the redirect whenever a browser is involved.
-	cb, cleanup, err := startCallbackServer()
+	cb, cleanup, err := startCallbackServer(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +217,7 @@ func (a *Authenticator) LoginWithOptions(ctx context.Context, opts LoginOptions)
 		}
 	default:
 		fmt.Fprintln(opts.output(), "\n📎 Opening browser for Google authorization...")
-		if openErr := opts.openBrowser()(authURL); openErr != nil {
+		if openErr := opts.openBrowser(ctx)(authURL); openErr != nil {
 			// Browser unavailable: degrade to manual paste instead of dying.
 			fmt.Fprintln(opts.output(), "\n⚠ Could not launch a browser — switching to manual mode.")
 			if authCode, err = promptForAuthCode(authURL, opts.input(), opts.output()); err != nil {
@@ -284,8 +284,9 @@ type callbackServer struct {
 
 // startCallbackServer binds a loopback listener and serves the OAuth
 // callback handler on a random port. Call cleanup when done.
-func startCallbackServer() (*callbackServer, func(), error) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+func startCallbackServer(ctx context.Context) (*callbackServer, func(), error) {
+	lc := net.ListenConfig{}
+	listener, err := lc.Listen(ctx, "tcp", "127.0.0.1:0")
 	if err != nil {
 		return nil, nil, fmt.Errorf("listen: %w", err)
 	}
@@ -309,12 +310,12 @@ func startCallbackServer() (*callbackServer, func(), error) {
 		fmt.Fprintf(w, "✓ Authorized! You can close this window and return to Pi.")
 	})
 
-	server := &http.Server{Handler: mux}
+	server := &http.Server{Handler: mux, ReadHeaderTimeout: 5 * time.Second}
 	go server.Serve(listener) //nolint:errcheck // listener already bound
 
 	cleanup := func() {
-		server.Close()
-		listener.Close()
+		_ = server.Close()
+		_ = listener.Close()
 	}
 
 	return &callbackServer{
@@ -348,7 +349,7 @@ func saveOAuthToken(token *oauth2.Token) error {
 func LoadToken() (*oauth2.Token, error) {
 	t, err := config.LoadTokens()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("load tokens: %w", err)
 	}
 	if t.AccessToken == "" {
 		return nil, nil
@@ -369,22 +370,22 @@ func HasToken() bool {
 }
 
 // openBrowser opens a URL in the default system browser.
-func openBrowser(url string) error {
+func openBrowser(ctx context.Context, url string) error {
 	// Try xdg-open first (Linux with desktop env)
-	if err := exec.Command("xdg-open", url).Start(); err == nil {
+	if err := exec.CommandContext(ctx, "xdg-open", url).Start(); err == nil {
 		return nil
 	}
 	// macOS
-	if err := exec.Command("open", url).Start(); err == nil {
+	if err := exec.CommandContext(ctx, "open", url).Start(); err == nil {
 		return nil
 	}
 	// Windows
-	if err := exec.Command("cmd", "/c", "start", url).Start(); err == nil {
+	if err := exec.CommandContext(ctx, "cmd", "/c", "start", url).Start(); err == nil {
 		return nil
 	}
 	// Fallback: try common browsers
 	for _, browser := range []string{"x-www-browser", "firefox", "google-chrome", "chromium", "brave"} {
-		if err := exec.Command(browser, url).Start(); err == nil {
+		if err := exec.CommandContext(ctx, browser, url).Start(); err == nil {
 			return nil
 		}
 	}

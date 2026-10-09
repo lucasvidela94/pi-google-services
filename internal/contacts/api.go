@@ -42,6 +42,7 @@ func (s *Service) SearchContacts(ctx context.Context, query string, pageSize int
 
 	res, err := s.svc.People.SearchContacts().Query(query).PageSize(pageSize).
 		ReadMask("names,emailAddresses,phoneNumbers,photos").
+		Context(ctx).
 		Do()
 	if err != nil {
 		return nil, fmt.Errorf("search contacts: %w", err)
@@ -72,6 +73,7 @@ func (s *Service) SearchContacts(ctx context.Context, query string, pageSize int
 func (s *Service) GetContact(ctx context.Context, resourceName string) (*ContactSummary, error) {
 	p, err := s.svc.People.Get(resourceName).
 		PersonFields("names,emailAddresses,phoneNumbers,photos,addresses,organizations,biographies,birthdays").
+		Context(ctx).
 		Do()
 	if err != nil {
 		return nil, fmt.Errorf("get contact: %w", err)
@@ -107,7 +109,7 @@ func (s *Service) CreateContact(ctx context.Context, name, email, phone string) 
 		person.PhoneNumbers = []*people.PhoneNumber{{Value: phone}}
 	}
 
-	created, err := s.svc.People.CreateContact(person).Do()
+	created, err := s.svc.People.CreateContact(person).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("create contact: %w", err)
 	}
@@ -135,6 +137,7 @@ func (s *Service) ListConnections(ctx context.Context, pageSize int64) ([]*Conta
 		PageSize(pageSize).
 		PersonFields("names,emailAddresses,phoneNumbers,photos").
 		SortOrder("LAST_MODIFIED_DESCENDING").
+		Context(ctx).
 		Do()
 	if err != nil {
 		return nil, fmt.Errorf("list connections: %w", err)
@@ -168,15 +171,15 @@ func (s *Service) ListConnections(ctx context.Context, pageSize int64) ([]*Conta
 func FormatContacts(contacts []*ContactSummary) string {
 	var b strings.Builder
 	for i, c := range contacts {
-		b.WriteString(fmt.Sprintf("%d. 👤 %s\n", i+1, c.Name))
+		fmt.Fprintf(&b, "%d. 👤 %s\n", i+1, c.Name)
 		for _, e := range c.Emails {
-			b.WriteString(fmt.Sprintf("   📧 %s\n", e))
+			fmt.Fprintf(&b, "   📧 %s\n", e)
 		}
 		for _, ph := range c.Phones {
-			b.WriteString(fmt.Sprintf("   📞 %s\n", ph))
+			fmt.Fprintf(&b, "   📞 %s\n", ph)
 		}
 		if c.ResourceName != "" {
-			b.WriteString(fmt.Sprintf("   🔖 %s\n", c.ResourceName))
+			fmt.Fprintf(&b, "   🔖 %s\n", c.ResourceName)
 		}
 	}
 	return b.String()

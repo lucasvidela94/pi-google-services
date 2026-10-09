@@ -1,0 +1,96 @@
+version: "2"
+
+# Gate anti-slop para código Go (incluido generado por agentes).
+# Regla: el gate debe estar en verde en el árbol limpio. Si un linter
+# marca deuda vieja que no vas a arreglar, no lo silencies con nolint
+# masivo: ajustá el threshold o sacalo de `enable` y anotalo abajo.
+linters:
+  default: none
+  enable:
+    - errcheck       # errores ignorados
+    - errorlint      # %w y errors.Is/As
+    - wrapcheck      # errores de paquetes externos sin contexto
+    - govet
+    - staticcheck
+    - gosec
+    - noctx          # http sin context
+    - bodyclose
+    - sqlclosecheck
+    - rowserrcheck
+    - contextcheck
+    - gocritic
+    - revive
+    - unused
+    - ineffassign
+    - cyclop
+    - dupl
+    - forbidigo      # panic: solo main puede terminar el proceso
+    - depguard       # lista blanca de dependencias directas
+    - misspell
+  settings:
+    cyclop:
+      max-complexity: 15
+    dupl:
+      threshold: 150
+    forbidigo:
+      forbid:
+        - pattern: ^panic$
+          msg: "devolvé el error en vez de panic; solo main termina el proceso (log.Fatal)"
+    depguard:
+      rules:
+        main:
+          allow:
+            - $gostd
+            - github.com/sombi/pi-google-services
+            - golang.org/x/oauth2
+            - google.golang.org/api
+    wrapcheck:
+      ignoreSigs:
+        - .Errorf(
+        - errors.New(
+        - errors.Unwrap(
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - std-error-handling
+    rules:
+      # G101: el OAuth client_id va bakeado en el binario por diseño
+      # (es público como en rclone/gcalcli; ver release.yml).
+      - linters: [gosec]
+        identifiers: [G101]
+        path: internal/auth/embedded\.go
+      # G204: openBrowser solo ejecuta binarios fijos (xdg-open/open/...)
+      # con la URL de autorización de Google, no input de usuario.
+      - linters: [gosec]
+        identifiers: [G204]
+        path: internal/auth/auth\.go
+      # G304: leer credenciales y descargar archivos a rutas pedidas por
+      # el usuario es el propósito de la herramienta, no una falla.
+      - linters: [gosec]
+        identifiers: [G304]
+        path: (internal/config/config\.go|internal/drive/api\.go)
+      # G117: AccessToken/RefreshToken son los nombres de campo estándar
+      # del JSON de OAuth, no secretos hardcodeados.
+      - linters: [gosec]
+        identifiers: [G117]
+        path: internal/config/config\.go
+      # G304: el updater escribe sobre el propio binario (self-update),
+      # no abre rutas de usuario.
+      - linters: [gosec]
+        identifiers: [G304]
+        path: main\.go
+      # G107: los tests simulan el callback OAuth contra localhost.
+      - linters: [gosec]
+        identifiers: [G107]
+        path: _test\.go
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes: github.com/sombi/pi-google-services
+  exclusions:
+    generated: lax

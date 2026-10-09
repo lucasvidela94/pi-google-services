@@ -167,13 +167,13 @@ func (s *GmailService) handleListInbox(ctx context.Context, params json.RawMessa
 	} else {
 		for i, m := range res.Messages {
 			date := gmail.HumanDate(m.Date)
-			b.WriteString(fmt.Sprintf("%d. %s\n   📧 %s\n   👤 %s  🕐 %s\n   💬 %s\n",
-				i+1, m.Subject, m.ID, m.From, date, m.Snippet))
+			fmt.Fprintf(&b, "%d. %s\n   📧 %s\n   👤 %s  🕐 %s\n   💬 %s\n",
+				i+1, m.Subject, m.ID, m.From, date, m.Snippet)
 		}
 	}
 
 	if res.NextPageToken != "" {
-		b.WriteString(fmt.Sprintf("\nHay más resultados. Para la siguiente página, usá pageToken=%q.", res.NextPageToken))
+		fmt.Fprintf(&b, "\nHay más resultados. Para la siguiente página, usá pageToken=%q.", res.NextPageToken)
 	}
 
 	return contentResponse(b.String()), nil
@@ -233,13 +233,13 @@ func (s *GmailService) handleSearchEmails(ctx context.Context, params json.RawMe
 	} else {
 		for i, m := range res.Messages {
 			date := gmail.HumanDate(m.Date)
-			b.WriteString(fmt.Sprintf("%d. [%s] %s\n   From: %s  %s\n   %s\n",
-				i+1, m.ID, m.Subject, m.From, date, m.Snippet))
+			fmt.Fprintf(&b, "%d. [%s] %s\n   From: %s  %s\n   %s\n",
+				i+1, m.ID, m.Subject, m.From, date, m.Snippet)
 		}
 	}
 
 	if res.NextPageToken != "" {
-		b.WriteString(fmt.Sprintf("\nHay más resultados. Usá pageToken=%q para la siguiente página.", res.NextPageToken))
+		fmt.Fprintf(&b, "\nHay más resultados. Usá pageToken=%q para la siguiente página.", res.NextPageToken)
 	}
 
 	return contentResponse(b.String()), nil

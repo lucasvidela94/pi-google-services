@@ -145,10 +145,10 @@ func (s *DriveService) handleListFiles(ctx context.Context, params json.RawMessa
 	} else {
 		for i, f := range files {
 			icon := fileIcon(f.MimeType)
-			b.WriteString(fmt.Sprintf("%d. %s %s\n", i+1, icon, f.Name))
-			b.WriteString(fmt.Sprintf("   📎 %s  🕐 %s", f.ID, f.Modified))
+			fmt.Fprintf(&b, "%d. %s %s\n", i+1, icon, f.Name)
+			fmt.Fprintf(&b, "   📎 %s  🕐 %s", f.ID, f.Modified)
 			if f.MimeType != "application/vnd.google-apps.folder" && f.Size > 0 {
-				b.WriteString(fmt.Sprintf("  📦 %s", fmtSize(f.Size)))
+				fmt.Fprintf(&b, "  📦 %s", fmtSize(f.Size))
 			}
 			b.WriteString("\n")
 		}
@@ -179,13 +179,13 @@ func (s *DriveService) handleSearchDrive(ctx context.Context, params json.RawMes
 	} else {
 		for i, f := range files {
 			icon := fileIcon(f.MimeType)
-			b.WriteString(fmt.Sprintf("%d. %s %s\n", i+1, icon, f.Name))
-			b.WriteString(fmt.Sprintf("   📎 %s  🕐 %s", f.ID, f.Modified))
+			fmt.Fprintf(&b, "%d. %s %s\n", i+1, icon, f.Name)
+			fmt.Fprintf(&b, "   📎 %s  🕐 %s", f.ID, f.Modified)
 			if f.Size > 0 {
-				b.WriteString(fmt.Sprintf("  📦 %s", fmtSize(f.Size)))
+				fmt.Fprintf(&b, "  📦 %s", fmtSize(f.Size))
 			}
 			if f.WebViewLink != "" {
-				b.WriteString(fmt.Sprintf("\n   🔗 %s", f.WebViewLink))
+				fmt.Fprintf(&b, "\n   🔗 %s", f.WebViewLink)
 			}
 			b.WriteString("\n")
 		}
@@ -307,12 +307,14 @@ func fileIcon(mimeType string) string {
 }
 
 func fmtSize(bytes int64) string {
-	if bytes < 1024 {
+	switch {
+	case bytes < 1024:
 		return fmt.Sprintf("%d B", bytes)
-	} else if bytes < 1024*1024 {
+	case bytes < 1024*1024:
 		return fmt.Sprintf("%.1f KB", float64(bytes)/1024)
-	} else if bytes < 1024*1024*1024 {
+	case bytes < 1024*1024*1024:
 		return fmt.Sprintf("%.1f MB", float64(bytes)/(1024*1024))
+	default:
+		return fmt.Sprintf("%.1f GB", float64(bytes)/(1024*1024*1024))
 	}
-	return fmt.Sprintf("%.1f GB", float64(bytes)/(1024*1024*1024))
 }

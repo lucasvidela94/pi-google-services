@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,7 +30,7 @@ import (
 	"github.com/sombi/pi-google-services/internal/tasks"
 )
 
-const version = "0.1.24"
+const version = "0.1.25"
 
 func main() {
 	log.SetFlags(0)
@@ -140,15 +141,6 @@ func allScopes() []string {
 // permissions — no hardcoded subsets, no drift between commands.
 func newAuthenticator(creds *config.Credentials) *auth.Authenticator {
 	return auth.NewFromCredentials(creds, allScopes())
-}
-
-// All tools aggregated from all services.
-func allTools() []mcp.ToolDefinition {
-	var tools []mcp.ToolDefinition
-	for _, svc := range registeredServices() {
-		tools = append(tools, svc.Tools()...)
-	}
-	return tools
 }
 
 // wantsNoBrowser reports whether --no-browser was passed anywhere in args,
@@ -333,9 +325,18 @@ func cmdSetup(noBrowser bool) {
 func cmdUpdate() {
 	fmt.Println("\n🔍 Buscando actualizaciones...")
 
-	latest, err := fetchLatestVersion()
+	if err := runUpdate(context.Background()); err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+}
+
+func runUpdate(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	latest, err := fetchLatestVersion(ctx)
 	if err != nil {
-		log.Fatalf("Error al buscar versión: %v", err)
+		return fmt.Errorf("buscar versión: %w", err)
 	}
 
 	current := strings.TrimPrefix(version, "v")
@@ -344,22 +345,27 @@ func cmdUpdate() {
 	switch {
 	case latest == "" || latest == current:
 		fmt.Printf("✅ Ya tenés la última versión (%s)\n", version)
-		return
+		return nil
 	case compareVersions(latest, current) > 0:
 		fmt.Printf("📦 Versión nueva disponible: %s (actual: %s)\n", latest, version)
-		if err := downloadUpdate(latest); err != nil {
-			log.Fatalf("Error al actualizar: %v", err)
+		if err := downloadUpdate(ctx, latest); err != nil {
+			return fmt.Errorf("actualizar: %w", err)
 		}
 		fmt.Printf("\n✅ Actualizado a v%s\n", latest)
 		fmt.Println("   Reiniciá la sesión de Pi para usar la nueva versión.")
 	default:
 		fmt.Printf("✅ Ya tenés la última versión (%s)\n", version)
 	}
+	return nil
 }
 
-func fetchLatestVersion() (string, error) {
+func fetchLatestVersion(ctx context.Context) (string, error) {
 	// GitHub API: get latest release tag
-	resp, err := http.Get("https://api.github.com/repos/lucasvidela94/pi-google-services/releases/latest")
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/repos/lucasvidela94/pi-google-services/releases/latest", nil)
+	if err != nil {
+		return "", fmt.Errorf("github request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("github api: %w", err)
 	}
@@ -379,7 +385,7 @@ func fetchLatestVersion() (string, error) {
 	return result.TagName, nil
 }
 
-func downloadUpdate(version string) error {
+func downloadUpdate(ctx context.Context, version string) error {
 	plat := runtime.GOOS + "-" + runtime.GOARCH
 	switch plat {
 	case "linux-amd64", "linux-arm64", "darwin-arm64":
@@ -391,7 +397,11 @@ func downloadUpdate(version string) error {
 	url := fmt.Sprintf("https://github.com/lucasvidela94/pi-google-services/releases/download/v%s/pi-google-services-%s.gz", version, plat)
 	fmt.Printf("   ⬇ Descargando %s...\n", url)
 
-	resp, err := http.Get(url)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return fmt.Errorf("download request: %w", err)
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return fmt.Errorf("download: %w", err)
 	}
@@ -422,7 +432,7 @@ func downloadUpdate(version string) error {
 	}
 
 	if err := os.Rename(tmpPath, selfPath); err != nil {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("replace: %w", err)
 	}
 
@@ -443,7 +453,9 @@ func decompressGzip(data []byte, path string, mode os.FileMode) error {
 	}
 	defer out.Close()
 
-	if _, err := io.Copy(out, gr); err != nil {
+	// Cap de seguridad: el binario real pesa ~10MB; si el gzip expande
+	// más allá de 64MB el asset no es el esperado y se aborta.
+	if _, err := io.Copy(out, io.LimitReader(gr, 64<<20)); err != nil {
 		return fmt.Errorf("decompress: %w", err)
 	}
 	return nil
@@ -459,9 +471,8 @@ func compareVersions(a, b string) int {
 	}
 
 	for i := 0; i < maxLen; i++ {
-		var ai, bi int
-		fmt.Sscanf(aParts[i], "%d", &ai)
-		fmt.Sscanf(bParts[i], "%d", &bi)
+		ai := partAt(aParts, i)
+		bi := partAt(bParts, i)
 		if ai > bi {
 			return 1
 		}
@@ -470,6 +481,16 @@ func compareVersions(a, b string) int {
 		}
 	}
 	return 0
+}
+
+// partAt returns the numeric value of the i-th version part,
+// treating missing or non-numeric parts as 0.
+func partAt(parts []string, i int) int {
+	if i >= len(parts) {
+		return 0
+	}
+	n, _ := strconv.Atoi(strings.TrimSpace(parts[i]))
+	return n
 }
 
 func registerServiceTools(server *mcp.Server, svc services.Service) {

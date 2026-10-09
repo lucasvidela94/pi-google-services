@@ -243,7 +243,7 @@ func TestLoginBrowserFailureFallsBackToManual(t *testing.T) {
 	token, err := a.LoginWithOptions(context.Background(), LoginOptions{
 		Input:       in,
 		Output:      &out,
-		OpenBrowser: func(url string) error { return fmt.Errorf("no browser here") },
+		OpenBrowser: func(_ string) error { return fmt.Errorf("no browser here") },
 	})
 	if err != nil {
 		t.Fatalf("LoginWithOptions(fallback): %v", err)
@@ -274,7 +274,13 @@ func TestLoginBrowserFlowEndToEnd(t *testing.T) {
 				return
 			}
 			callback := fmt.Sprintf("http://localhost:%s%s?state=state&code=e2e-code", ru.Port(), ru.Path)
-			http.Get(callback) //nolint:errcheck // best-effort simulation
+			req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, callback, nil)
+			if err != nil {
+				return
+			}
+			if resp, err := http.DefaultClient.Do(req); err == nil {
+				_ = resp.Body.Close()
+			}
 		}()
 		return nil
 	}

@@ -52,7 +52,7 @@ type ReplyResult struct {
 // thread, because a caller cannot know the thread's subject without another
 // round trip and a mismatched one breaks the conversation.
 func (s *Service) ReplyToEmail(ctx context.Context, threadID, to, subject, body string, attachments []Attachment) (*ReplyResult, error) {
-	target, err := s.threadReplyTarget(threadID)
+	target, err := s.threadReplyTarget(ctx, threadID)
 	if err != nil {
 		return nil, fmt.Errorf("reply: %w", err)
 	}
@@ -71,7 +71,7 @@ func (s *Service) ReplyToEmail(ctx context.Context, threadID, to, subject, body 
 		replyHeaders(target.MessageID, referencesChain(target.References, target.MessageID)))
 	msg.ThreadId = threadID
 
-	sent, err := s.svc.Messages.Send("me", msg).Do()
+	sent, err := s.svc.Messages.Send("me", msg).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("reply: %w", err)
 	}
@@ -87,10 +87,11 @@ func (s *Service) ReplyToEmail(ctx context.Context, threadID, to, subject, body 
 // threadReplyTarget loads a thread and returns its most recent message as the
 // one to answer. Metadata format is enough and avoids pulling bodies and
 // attachments back over the wire just to read five headers.
-func (s *Service) threadReplyTarget(threadID string) (*replyTarget, error) {
+func (s *Service) threadReplyTarget(ctx context.Context, threadID string) (*replyTarget, error) {
 	thread, err := s.svc.Threads.Get("me", threadID).
 		Format("metadata").
 		MetadataHeaders("Message-ID", "References", "Subject", "From", "Reply-To").
+		Context(ctx).
 		Do()
 	if err != nil {
 		return nil, fmt.Errorf("load thread %s: %w", threadID, err)

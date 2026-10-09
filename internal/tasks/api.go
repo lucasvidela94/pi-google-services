@@ -47,7 +47,7 @@ func New(ctx context.Context, ts oauth2.TokenSource) (*Service, error) {
 
 // ListTaskLists returns all task lists.
 func (s *Service) ListTaskLists(ctx context.Context) ([]*TaskListSummary, error) {
-	res, err := s.lists.List().Do()
+	res, err := s.lists.List().Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("list tasklists: %w", err)
 	}
@@ -75,7 +75,7 @@ func (s *Service) ListTasks(ctx context.Context, taskListID, status string, maxR
 		call.ShowCompleted(false).ShowHidden(false)
 	}
 
-	res, err := call.Do()
+	res, err := call.Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("list tasks: %w", err)
 	}
@@ -113,7 +113,7 @@ func (s *Service) CreateTask(ctx context.Context, taskListID, title, notes, dueD
 	if dueDate != "" {
 		task.Due = dueDate
 	}
-	created, err := s.tasks.Insert(taskListID, task).Do()
+	created, err := s.tasks.Insert(taskListID, task).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("create task: %w", err)
 	}
@@ -134,7 +134,7 @@ func (s *Service) UpdateTask(ctx context.Context, taskListID, taskID, title, not
 	if dueDate != "" {
 		task.Due = dueDate
 	}
-	updated, err := s.tasks.Update(taskListID, taskID, task).Do()
+	updated, err := s.tasks.Update(taskListID, taskID, task).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("update task: %w", err)
 	}
@@ -146,12 +146,12 @@ func (s *Service) CompleteTask(ctx context.Context, taskListID, taskID string) (
 	if taskListID == "" {
 		taskListID = "@default"
 	}
-	current, err := s.tasks.Get(taskListID, taskID).Do()
+	current, err := s.tasks.Get(taskListID, taskID).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("get task: %w", err)
 	}
 	current.Status = "completed"
-	updated, err := s.tasks.Update(taskListID, taskID, current).Do()
+	updated, err := s.tasks.Update(taskListID, taskID, current).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("complete task: %w", err)
 	}
@@ -163,7 +163,10 @@ func (s *Service) DeleteTask(ctx context.Context, taskListID, taskID string) err
 	if taskListID == "" {
 		taskListID = "@default"
 	}
-	return s.tasks.Delete(taskListID, taskID).Do()
+	if err := s.tasks.Delete(taskListID, taskID).Context(ctx).Do(); err != nil {
+		return fmt.Errorf("delete task: %w", err)
+	}
+	return nil
 }
 
 func fmtDue(raw string) string {

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -46,7 +47,7 @@ func TestDocsServiceTools(t *testing.T) {
 
 func TestDocsServiceHandle_UnknownTool(t *testing.T) {
 	ds := &DocsService{}
-	_, err := ds.Handle(nil, "nonexistent", nil)
+	_, err := ds.Handle(context.TODO(), "nonexistent", nil)
 	if err == nil || err.Code != -32601 {
 		t.Errorf("expected -32601 error, got %+v", err)
 	}
@@ -66,7 +67,7 @@ func TestDocsServiceHandle_Validation(t *testing.T) {
 		{"get-doc", `{bad json`, "Invalid arguments"},
 	}
 	for _, tc := range cases {
-		_, rpcErr := ds.Handle(nil, tc.tool, json.RawMessage(tc.params))
+		_, rpcErr := ds.Handle(context.TODO(), tc.tool, json.RawMessage(tc.params))
 		if rpcErr == nil {
 			t.Errorf("%s %s: expected error, got nil", tc.tool, tc.params)
 			continue

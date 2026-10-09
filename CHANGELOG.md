@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.25
+
+- **Gate anti-slop: `golangci-lint` estricto en verde + CI** — `.golangci.yml` (errcheck, errorlint, wrapcheck, govet, staticcheck, gosec, noctx, bodyclose, sqlclosecheck, rowserrcheck, contextcheck, gocritic, revive, unused, ineffassign, cyclop, dupl, forbidigo, depguard, misspell), workflow `ci.yml` (gofmt + vet + lint + `go test -race`), `AGENTS.md` corto y plugin opencode (gofmt nativo + gate en `session.idle`).
+- **Fixes que encontró el gate (52 hallazgos, 0 pendientes)** — `ctx` propagado a todas las llamadas Google API (`.Context(ctx)`), HTTP y `exec` con contexto, `ReadHeaderTimeout` en el callback OAuth, errores envueltos con `%w`, `compareVersions` sin `Sscanf` (además arregla pánico con versiones de distinto largo), MIME detectado ahora sí enviado en uploads de Drive, cap de 64MB anti-descompresión en el updater, código muerto eliminado (`allTools`, `BaseService`, `mockCalendarAPI`), tests sin `nil` ctx ni permisos 0644.
+
 ## v0.1.24
 
 - **Feature: Google Docs (3 tools)** — `get-doc` (plain-text extraction, paragraphs + tables), `create-doc`, `append-to-doc` (via `EndOfSegmentLocation`, no index arithmetic). Scope: `documents`. Re-login required.

@@ -86,7 +86,7 @@ func (s *SheetsService) handleListSheets(ctx context.Context, params json.RawMes
 		b.WriteString("No tabs found.")
 	} else {
 		for i, title := range titles {
-			b.WriteString(fmt.Sprintf("%d. 📊 %s\n", i+1, title))
+			fmt.Fprintf(&b, "%d. 📊 %s\n", i+1, title)
 		}
 	}
 	return contentResponse(b.String()), nil

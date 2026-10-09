@@ -109,7 +109,7 @@ func TestLoadCredentialsFromFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "credentials.json")
 	data := `{"installed":{"client_id":"file-id.apps.googleusercontent.com","client_secret":"file-secret"}}`
-	if err := os.WriteFile(path, []byte(data), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(data), 0600); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 

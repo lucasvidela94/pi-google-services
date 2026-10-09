@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -44,7 +45,7 @@ func TestSheetsServiceTools(t *testing.T) {
 
 func TestSheetsServiceHandle_UnknownTool(t *testing.T) {
 	ss := &SheetsService{}
-	_, err := ss.Handle(nil, "nonexistent", nil)
+	_, err := ss.Handle(context.TODO(), "nonexistent", nil)
 	if err == nil || err.Code != -32601 {
 		t.Errorf("expected -32601 error, got %+v", err)
 	}
@@ -62,7 +63,7 @@ func TestSheetsServiceHandle_Validation(t *testing.T) {
 		{"read-sheet", `{bad json`, "Invalid arguments"},
 	}
 	for _, tc := range cases {
-		_, rpcErr := ss.Handle(nil, tc.tool, json.RawMessage(tc.params))
+		_, rpcErr := ss.Handle(context.TODO(), tc.tool, json.RawMessage(tc.params))
 		if rpcErr == nil {
 			t.Errorf("%s %s: expected error, got nil", tc.tool, tc.params)
 			continue

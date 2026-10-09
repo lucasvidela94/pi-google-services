@@ -113,7 +113,7 @@ func (s *TasksService) handleListTaskLists(ctx context.Context) (interface{}, *m
 		b.WriteString("No task lists found.")
 	} else {
 		for _, l := range lists {
-			b.WriteString(fmt.Sprintf("📋 %s\n  ID: %s\n", l.Title, l.ID))
+			fmt.Fprintf(&b, "📋 %s\n  ID: %s\n", l.Title, l.ID)
 		}
 	}
 	return contentResponse(b.String()), nil
@@ -143,16 +143,16 @@ func (s *TasksService) handleListTasks(ctx context.Context, params json.RawMessa
 			if t.Status == "completed" {
 				status = "✅"
 			}
-			b.WriteString(fmt.Sprintf("%d. %s %s", i+1, status, t.Title))
+			fmt.Fprintf(&b, "%d. %s %s", i+1, status, t.Title)
 			if t.Due != "" {
-				b.WriteString(fmt.Sprintf(" (due: %s)", t.Due))
+				fmt.Fprintf(&b, " (due: %s)", t.Due)
 			}
 			if t.Notes != "" {
 				trunc := t.Notes
 				if len(trunc) > 80 {
 					trunc = trunc[:80] + "..."
 				}
-				b.WriteString(fmt.Sprintf("\n   📝 %s", trunc))
+				fmt.Fprintf(&b, "\n   📝 %s", trunc)
 			}
 			b.WriteString("\n")
 		}

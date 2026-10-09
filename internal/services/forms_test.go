@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -56,7 +57,7 @@ func TestFormsServiceTools(t *testing.T) {
 
 func TestFormsServiceHandle_UnknownTool(t *testing.T) {
 	fs := &FormsService{}
-	_, err := fs.Handle(nil, "nonexistent", nil)
+	_, err := fs.Handle(context.TODO(), "nonexistent", nil)
 	if err == nil || err.Code != -32601 {
 		t.Errorf("expected -32601 error, got %+v", err)
 	}
@@ -81,7 +82,7 @@ func TestFormsServiceHandle_Validation(t *testing.T) {
 		{"create-form", `{bad json`, "Invalid arguments"},
 	}
 	for _, tc := range cases {
-		_, rpcErr := fs.Handle(nil, tc.tool, json.RawMessage(tc.params))
+		_, rpcErr := fs.Handle(context.TODO(), tc.tool, json.RawMessage(tc.params))
 		if rpcErr == nil {
 			t.Errorf("%s %s: expected error, got nil", tc.tool, tc.params)
 			continue

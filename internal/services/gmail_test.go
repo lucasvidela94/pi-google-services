@@ -21,7 +21,7 @@ func TestResolveAttachments_Empty(t *testing.T) {
 func TestResolveAttachments_LocalPath(t *testing.T) {
 	tmp := t.TempDir()
 	filePath := filepath.Join(tmp, "test.txt")
-	if err := os.WriteFile(filePath, []byte("hello world"), 0644); err != nil {
+	if err := os.WriteFile(filePath, []byte("hello world"), 0600); err != nil {
 		t.Fatalf("write temp file: %v", err)
 	}
 

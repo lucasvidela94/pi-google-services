@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.26
+
+- **Fix (updater): aborta si el gzip expande más de 64MB en vez de truncar en silencio** — `io.Copy` contra un `LimitReader` agotado devuelve `nil`, así que el cap anterior escribía un binario truncado y lo instalaba. Ahora se piden `limit+1` bytes y se compara `n` (`decompressGzipLimited`), con test de regresión (`TestDecompressGzipLimited`).
+
 ## v0.1.25
 
 - **Gate anti-slop: `golangci-lint` estricto en verde + CI** — `.golangci.yml` (errcheck, errorlint, wrapcheck, govet, staticcheck, gosec, noctx, bodyclose, sqlclosecheck, rowserrcheck, contextcheck, gocritic, revive, unused, ineffassign, cyclop, dupl, forbidigo, depguard, misspell), workflow `ci.yml` (gofmt + vet + lint + `go test -race`), `AGENTS.md` corto y plugin opencode (gofmt nativo + gate en `session.idle`).

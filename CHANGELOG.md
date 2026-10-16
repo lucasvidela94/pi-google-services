@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.27
+
+- **Docs: README y `package.json` alineados a 36 tools / 8 servicios** — el encabezado y la descripción del paquete ahora mencionan Calendar, Gmail, Tasks, Drive, Contacts, Forms, Docs y Sheets.
+
 ## v0.1.26
 
 - **Fix (updater): aborta si el gzip expande más de 64MB en vez de truncar en silencio** — `io.Copy` contra un `LimitReader` agotado devuelve `nil`, así que el cap anterior escribía un binario truncado y lo instalaba. Ahora se piden `limit+1` bytes y se compara `n` (`decompressGzipLimited`), con test de regresión (`TestDecompressGzipLimited`).

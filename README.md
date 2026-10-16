@@ -1,7 +1,7 @@
 # pi-google-services
 
-Google Calendar, Gmail, and Google Meet MCP server for Pi.
-Single binary, zero runtime deps. Login once, manage everything from your agent.
+Google Calendar, Gmail, Tasks, Drive, Contacts, Forms, Docs & Sheets MCP server for Pi.
+36 tools, single binary, zero runtime deps. Login once, manage everything from your agent.
 
 ## Requirements
 

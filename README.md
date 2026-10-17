@@ -196,7 +196,7 @@ serves to identify which app is requesting access. The actual security
 is in the OAuth consent screen where **you** decide what to share.
 
 Why shared instead of "create your own project"? Registering a Google Cloud
-project means enabling 5 APIs, configuring the consent screen, and creating
+project means enabling 8 APIs, configuring the consent screen, and creating
 a Desktop OAuth client — ~10 minutes of friction before the first login.
 The shared client removes that entirely: install, `setup`, authorize, done.
 No Google Cloud account, no billing, no JSON files to juggle.
@@ -213,6 +213,38 @@ Known limits of the shared client (by design, not bugs):
 - API quota is shared across all users of the client.
 - If Google ever suspends the project, auth breaks for everyone at once —
   with your own client ID that risk is yours alone.
+
+### Use Your Own Google Cloud Project
+
+If `setup` fails with **"This app requested access to sensitive information
+and is blocked"** (the shared client hit its 100-user cap or was suspended),
+or you simply prefer not to depend on the shared client, create your own
+OAuth client. It is free and takes ~10 minutes:
+
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/) and
+   create a project (no billing needed).
+2. **APIs & Services → Library**: enable these 8 APIs:
+   Google Calendar, Gmail, Google Tasks, Google Drive, People (contacts),
+   Google Forms, Google Docs and Google Sheets.
+3. **APIs & Services → OAuth consent screen**: choose **External**, fill in
+   the app name and your email, and leave it in **Testing** mode.
+   Under **Test users**, add your own Google account — without this, Google
+   blocks the login.
+4. **APIs & Services → Credentials → Create credentials → OAuth client ID**:
+   choose application type **Desktop app**, then **Download JSON**.
+5. Save the file as `~/.config/pi-google-services/credentials.json`, or point
+   to it explicitly:
+
+   ```bash
+   export GOOGLE_OAUTH_CREDENTIALS=/path/to/credentials.json
+   ```
+
+6. Run `pi-google-services setup` (or `login`) again and authorize.
+
+Your credentials take precedence over the baked-in client. In Testing mode
+Google expires refresh tokens after 7 days; to avoid re-logging weekly, set
+the consent screen's publishing status to **In production** (it stays
+unverified, which is fine for personal use).
 
 ### Why Google Shows "This app is not verified"
 

@@ -1,6 +1,6 @@
 {
   "name": "pi-google-services",
-  "version": "0.1.27",
+  "version": "0.1.28",
   "description": "Google Calendar, Gmail, Tasks, Drive, Contacts, Forms, Docs & Sheets MCP server for Pi — 36 tools, login once, manage Google from your AI agent.",
   "keywords": [
     "pi-package"

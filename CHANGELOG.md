@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.28
+
+- **Fix (tasks): `list-tasks` ahora incluye el ID de cada tarea** — sin el ID, `complete-task` y `delete-task` no se podían usar desde el agente. El formateo se extrajo a `formatTaskSummaries` con test table-driven (vacía, pendiente, completada). Gracias a @rayanamal (#8).
+- **Docs: guía "Use Your Own Google Cloud Project" en el README** — pasos para crear el proyecto, habilitar las 8 APIs, configurar el consent screen (con tu cuenta como test user) y el cliente Desktop; cubre el bloqueo "This app requested access to sensitive information" del cliente compartido (#9).
+
 ## v0.1.27
 
 - **Docs: README y `package.json` alineados a 36 tools / 8 servicios** — el encabezado y la descripción del paquete ahora mencionan Calendar, Gmail, Tasks, Drive, Contacts, Forms, Docs y Sheets.

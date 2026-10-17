@@ -134,30 +134,34 @@ func (s *TasksService) handleListTasks(ctx context.Context, params json.RawMessa
 		return nil, &mcp.RPCError{Code: -32603, Message: "Failed to list tasks", Data: err.Error()}
 	}
 
+	return contentResponse(formatTaskSummaries(items)), nil
+}
+
+func formatTaskSummaries(items []*tasks.TaskSummary) string {
 	var b strings.Builder
 	if len(items) == 0 {
-		b.WriteString("No tasks found.")
-	} else {
-		for i, t := range items {
-			status := "⬜"
-			if t.Status == "completed" {
-				status = "✅"
-			}
-			fmt.Fprintf(&b, "%d. %s %s", i+1, status, t.Title)
-			if t.Due != "" {
-				fmt.Fprintf(&b, " (due: %s)", t.Due)
-			}
-			if t.Notes != "" {
-				trunc := t.Notes
-				if len(trunc) > 80 {
-					trunc = trunc[:80] + "..."
-				}
-				fmt.Fprintf(&b, "\n   📝 %s", trunc)
-			}
-			b.WriteString("\n")
-		}
+		return "No tasks found."
 	}
-	return contentResponse(b.String()), nil
+
+	for i, t := range items {
+		status := "⬜"
+		if t.Status == "completed" {
+			status = "✅"
+		}
+		fmt.Fprintf(&b, "%d. %s %s (ID: %s)", i+1, status, t.Title, t.ID)
+		if t.Due != "" {
+			fmt.Fprintf(&b, " (due: %s)", t.Due)
+		}
+		if t.Notes != "" {
+			trunc := t.Notes
+			if len(trunc) > 80 {
+				trunc = trunc[:80] + "..."
+			}
+			fmt.Fprintf(&b, "\n   📝 %s", trunc)
+		}
+		b.WriteString("\n")
+	}
+	return b.String()
 }
 
 func (s *TasksService) handleCreateTask(ctx context.Context, params json.RawMessage) (interface{}, *mcp.RPCError) {

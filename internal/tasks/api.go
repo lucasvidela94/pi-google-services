@@ -101,7 +101,7 @@ func (s *Service) ListTasks(ctx context.Context, taskListID, status string, maxR
 	return summaries, nil
 }
 
-// CreateTask creates a new task with optional due date (YYYY-MM-DD).
+// CreateTask creates a new task with an optional date-only due date (YYYY-MM-DD).
 func (s *Service) CreateTask(ctx context.Context, taskListID, title, notes, dueDate string) (*tasks.Task, error) {
 	if taskListID == "" {
 		taskListID = "@default"
@@ -111,13 +111,30 @@ func (s *Service) CreateTask(ctx context.Context, taskListID, title, notes, dueD
 		Notes: notes,
 	}
 	if dueDate != "" {
-		task.Due = dueDate
+		apiDueDate, err := normalizeDueDate(dueDate)
+		if err != nil {
+			return nil, fmt.Errorf("normalize due date: %w", err)
+		}
+		task.Due = apiDueDate
 	}
 	created, err := s.tasks.Insert(taskListID, task).Context(ctx).Do()
 	if err != nil {
 		return nil, fmt.Errorf("create task: %w", err)
 	}
 	return created, nil
+}
+
+func normalizeDueDate(dueDate string) (string, error) {
+	date, err := time.Parse("2006-01-02", dueDate)
+	if err == nil {
+		return date.Format(time.RFC3339), nil
+	}
+
+	if _, err := time.Parse(time.RFC3339, dueDate); err == nil {
+		return dueDate, nil
+	}
+
+	return "", fmt.Errorf("invalid due date %q: expected YYYY-MM-DD", dueDate)
 }
 
 // UpdateTask updates title, notes, status, or due date.
